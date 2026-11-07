@@ -425,7 +425,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .level-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: calc(var(--u) * 1.6);
   padding: calc(var(--u) * 1) calc(var(--u) * 5) calc(var(--u) * 5);
@@ -465,14 +465,13 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .lvl-num {
   font-family: var(--display);
   font-weight: 700;
-  font-size: calc(var(--u) * 9);
+  font-size: calc(var(--u) * 8);
   line-height: 0.9;
   letter-spacing: -0.05em;
   color: transparent;
   -webkit-text-stroke: calc(var(--u) * 0.12) var(--dim);
   transition: -webkit-text-stroke-color 0.18s, color 0.18s;
 }
-.lvl.bonus .lvl-num { font-size: calc(var(--u) * 6.4); }
 .lvl:not(.locked):hover .lvl-num, .lvl:not(.locked):focus-visible .lvl-num { -webkit-text-stroke-color: var(--ink); }
 .lvl.cleared .lvl-num { color: var(--ink); -webkit-text-stroke-color: transparent; }
 
@@ -500,8 +499,6 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .lvl.locked { opacity: 0.38; }
 .lvl.locked .lvl-num { -webkit-text-stroke-color: var(--mute); }
 .lvl.locked .lvl-status i { background: transparent; border: 1px solid var(--dim); }
-.lvl.bonus:not(.locked) .lvl-status { color: var(--amber); }
-.lvl.bonus:not(.locked) .lvl-status i { background: var(--amber); }
 
 /* ───────────── Ayarlar ───────────── */
 

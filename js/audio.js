@@ -79,6 +79,16 @@ window.ZT = window.ZT || {};
           case 'win':
             tone('triangle', [[392, 0], [523, 0.08], [659, 0.16], [784, 0.24]], 0.5, 0.14);
             break;
+          case 'spring':
+            tone('sine', [[260, 0], [980, 0.16, true]], 0.2, 0.09);
+            break;
+          case 'crumble':
+            noise(0.12, 0.08);
+            break;
+          case 'open':
+            tone('square', [[140, 0], [70, 0.15, true]], 0.18, 0.06);
+            noise(0.15, 0.06);
+            break;
           case 'ui':
             tone('sine', [[880, 0]], 0.05, 0.035);
             break;
