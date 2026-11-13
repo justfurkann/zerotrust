@@ -1,161 +1,353 @@
-/* Zero Trust — bölüm verileri (1920×1080 sanal koordinat sistemi)
- * Metinler burada anahtar olarak durur, çevirisi i18n.js'te.
- * Oyuncu zıplama yüksekliği ≈172px, tek zıplamada yatay menzil ≈320px.
+/* Zero Trust — bölümler
+ *
+ * Izgara: 32 × 18 kare, her kare 60px (1920 × 1080).
+ * Oyuncu: 40 × 48. Zıplama ≈ 2.4 kare yükseklik, ≈ 4.5 kare menzil.
+ * Kısa basış alçak zıplar (değişken zıplama yüksekliği).
+ *
+ * Kare tipleri
+ *   #  zemin            ~  sahte zemin (görünür, içinden düşersin)
+ *   =  çöken kare       f  sahte çöken kare
+ *   ?  gizli blok (alttan kafa atınca belirir)
+ *   ^  diken (yukarı)   v  diken (aşağı)
+ *   x  görünmez tavan dikeni (çarpınca belirir)
+ *   S  yay
+ *   w  zayıf zemin (sadece devken kırılır)
+ *
+ * Tuzaklar (ents) oyuncunun merkezinin bir alana girmesiyle tetiklenir.
+ * Diğer nesneler: key (anahtar), shy (ürkek platform), ceil (sabırsız tavan),
+ * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge).
+ * trig: [x, w] → x..x+w sütun aralığı (tüm yükseklik)
+ *       [x, y, w, h] → dikdörtgen (kare cinsinden)
  */
 window.ZT = window.ZT || {};
 
 (function (ZT) {
   'use strict';
 
-  ZT.LEVEL_COUNT = 5;      // platform bölümleri
-  ZT.BONUS_INDEX = 5;      // kaçan buton
-  ZT.LEVEL_KEYS = ['l1', 'l2', 'l3', 'l4', 'l5', 'b'];
+  const COLS = 32;
+  const ROWS = 18;
 
-  const falling = (x, y, w, h, delay) => ({ x, y, w, h, type: 'falling', triggered: false, delay, vy: 0 });
-  const solid = (x, y, w, h) => ({ x, y, w, h, type: 'solid' });
-  const invisible = (x, y, w, h) => ({ x, y, w, h, type: 'invisible', revealed: false });
+  function builder() {
+    const g = Array.from({ length: ROWS }, () => Array(COLS).fill('.'));
+    return {
+      g,
+      fill(x, y, w, h, ch) {
+        for (let j = y; j < y + h; j++)
+          for (let i = x; i < x + w; i++)
+            if (j >= 0 && j < ROWS && i >= 0 && i < COLS) g[j][i] = ch;
+      },
+      clear(x, y, w, h) { this.fill(x, y, w, h, '.'); }
+    };
+  }
+
+  const LEVELS = [
+    // 01 — Merhaba: yürü, kapıya git. Zemin açılır, kapı kaçar.
+    {
+      key: 'l1',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.clear(13, 15, 4, 2);
+        b.fill(13, 16, 4, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 27, y: 13, runs: [[30, 13]], runR: 2.3 },
+          ents: [
+            { t: 'trapdoor', x: 13, y: 14, w: 4, h: 1, trig: [13.25, 2.5] },
+            { t: 'sign', x: 4, y: 13, k: 'l1.s1' }
+          ]
+        };
+      }
+    },
+
+    // 02 — Güven: çukurun üstünden atla. İndiğin yerde diken biter.
+    // Tavandaki blok koşana göre ayarlı; ikincisi ise hiç zarar vermez.
+    {
+      key: 'l2',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.clear(9, 14, 3, 2);
+        b.fill(9, 16, 3, 1, '^');
+        b.fill(16, 0, 11, 2, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'pop', x: 12, y: 13, w: 1, trig: [9, 3] },
+            { t: 'drop', x: 21, y: 2, w: 1, h: 1, trig: [17.6, 0.6] },
+            { t: 'drop', x: 25, y: 2, w: 1, h: 1, trig: [25.2, 0.6] },
+            { t: 'sign', x: 2, y: 13, k: 'l2.s1' }
+          ]
+        };
+      }
+    },
+
+    // 03 — Köprü: çöken köprü, ortasında sahte bir tahta.
+    // Kapı yüksekte; basamak görünmez, kafanı vurunca belirir.
+    {
+      key: 'l3',
+      build(b) {
+        b.fill(0, 14, 9, 4, '#');
+        b.fill(9, 14, 12, 1, '=');
+        b.fill(15, 14, 1, 1, 'f');
+        b.fill(21, 14, 11, 4, '#');
+        b.fill(27, 11, 5, 3, '#');
+        b.fill(25, 12, 1, 1, '?');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 10 },
+          ents: [
+            { t: 'sign', x: 1, y: 13, k: 'l3.s1' },
+            { t: 'sign', x: 21, y: 13, k: 'l3.s2' }
+          ]
+        };
+      }
+    },
+
+    // 04 — Yay: duvarın üstünden uç. Doğal iniş noktası dikenle dolar,
+    // havada sağ tuşu bırakıp duvarın dibine inmek gerekir.
+    {
+      key: 'l4',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(14, 9, 2, 5, '#');
+        b.fill(12, 13, 1, 1, 'S');
+        return {
+          spawn: [2, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'pop', x: 18, y: 13, w: 3, trig: [14, 0, 2, 9] },
+            { t: 'slide', x: 28, y: 13, to: 21, speed: 8, trig: [23, 1] },
+            { t: 'sign', x: 3, y: 13, k: 'l4.s1' }
+          ]
+        };
+      }
+    },
+
+    // 05 — Sessizlik: "tuzak yok". Çukurun üstünde görünmez tavan dikenleri var:
+    // tam zıplayan ölür, tuşa kısa basıp alçak zıplayan altından geçer.
+    // Kapıya dokununca sahte bir "tamamlandı" ve kapı başa ışınlanır.
+    {
+      key: 'l5',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.clear(12, 14, 2, 2);
+        b.fill(12, 16, 2, 1, '^');
+        b.fill(11, 11, 4, 1, 'x');
+        return {
+          spawn: [3, 13],
+          door: { x: 28, y: 13, fakeWin: [1, 13] },
+          ents: [
+            { t: 'sign', x: 4, y: 13, k: 'l5.s1' }
+          ]
+        };
+      }
+    },
+
+    // 06 — Ayna: sütunlar üstünde zıplama. İlk sütuna basınca kontroller
+    // kalıcı olarak ters döner (bölge değil, olay — titreme yok).
+    {
+      key: 'l6',
+      build(b) {
+        b.fill(0, 14, 10, 4, '#');
+        b.fill(10, 17, 15, 1, '#');
+        b.fill(10, 16, 15, 1, '^');
+        b.fill(12, 13, 2, 3, '#');
+        b.fill(17, 13, 1, 3, '#');
+        b.fill(21, 13, 2, 3, '#');
+        b.fill(25, 14, 7, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'invert', trig: [12.3, 1.4] },
+            { t: 'sign', x: 2, y: 13, k: 'l6.s1' }
+          ]
+        };
+      }
+    },
+
+    // 07 — Kaçış: zemin arkandan çöküyor. Dur, düşersin.
+    {
+      key: 'l7',
+      build(b) {
+        b.fill(0, 14, 3, 4, '#');
+        b.fill(3, 14, 29, 1, '=');
+        b.fill(10, 13, 1, 1, '^');
+        b.fill(16, 13, 1, 1, '^');
+        b.fill(21, 12, 1, 2, '=');
+        b.fill(26, 13, 1, 1, '^');
+        return {
+          spawn: [1, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'chase', x0: 3, x1: 31, trig: [3.6, 1], delay: 24, interval: 9 },
+            { t: 'sign', x: 0, y: 13, k: 'l7.s1' }
+          ]
+        };
+      }
+    },
+
+    // 08 — Son: öğrendiklerin sana karşı. 1. bölümdeki açılan zemine
+    // benzeyen yer sağlam; asıl tuzak hemen ötesindeki sahte zemin.
+    // Çöken köprü, koşana ayarlı düşen blok, iki kez kaçan kapı.
+    {
+      key: 'l8',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(11, 14, 3, 1, '~');
+        b.clear(11, 15, 3, 1);
+        b.fill(11, 16, 3, 1, '^');
+        b.clear(16, 14, 6, 4);
+        b.fill(16, 14, 6, 1, '=');
+        b.fill(18, 0, 8, 2, '#');
+        b.fill(24, 12, 3, 2, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13, runs: [[25, 11], [31, 13]], runR: 2.3 },
+          ents: [
+            { t: 'drop', x: 23, y: 2, w: 1, h: 1, trig: [19.2, 0.6] },
+            { t: 'sign', x: 2, y: 13, k: 'l8.s1' }
+          ]
+        };
+      }
+    },
+
+    // 09 — Anahtar: kapı kilitli. Anahtarı alınca kapı açılır,
+    // ama anahtar yarım saniye sonra dişlerini gösterip seni kovalar.
+    {
+      key: 'l9',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(13, 13, 2, 1, '^');
+        b.fill(20, 13, 1, 1, '^');
+        b.fill(27, 12, 4, 2, '#');
+        return {
+          spawn: [6, 13],
+          door: { x: 2, y: 13, locked: true },
+          ents: [
+            { t: 'key', x: 29, y: 11, hostile: true, delay: 30, speed: 5.2 },
+            { t: 'sign', x: 8, y: 13, k: 'l9.s1' }
+          ]
+        };
+      }
+    },
+
+    // 10 — Ürkek: platformlar zıpladığın an kaçıyor. Üçüncüsü ise
+    // sana doğru geliyor; sağ tuşu basılı tutan karşıya uçup düşer.
+    {
+      key: 'l10',
+      build(b) {
+        b.fill(0, 14, 6, 4, '#');
+        b.fill(26, 14, 6, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'shy', x: 9, y: 14, w: 2, dx: 80, trig: [3, 3.6] },
+            { t: 'shy', x: 15, y: 14, w: 2, dx: 100, trig: [8.5, 4] },
+            { t: 'shy', x: 21, y: 14, w: 2, dx: -60, trig: [14.5, 5] },
+            { t: 'sign', x: 0, y: 13, k: 'l10.s1' }
+          ]
+        };
+      }
+    },
+
+    // 11 — Sabır: 2. ve 8. bölüm beklemeyi öğretti. Burada tavan sabırsız:
+    // 2 saniye ilerlemezsen iner. Düşen blok koşanı ıskalar, bekleyeni ezer.
+    // Kayan diken duvardan seker ve 1.5 kat hızla arkandan geri gelir.
+    {
+      key: 'l11',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 28, y: 13 },
+          ents: [
+            { t: 'ceil', bottom: 5, warn: 80, slam: 115, start: 45 },
+            { t: 'drop', x: 10, y: 5, w: 1, h: 1, trig: [9.6, 0.5] },
+            { t: 'slide', x: 20, y: 13, to: 12, back: 30, speed: 8, trig: [16, 1] },
+            { t: 'sign', x: 3, y: 13, k: 'l11.s1' }
+          ]
+        };
+      }
+    },
+
+    // 12 — İksir: köprünün ortasındaki parlak küp seni devleştirir,
+    // ağırlığınla köprü kırılır. Onu atla; ikinci küpü al, duvarı yık.
+    {
+      key: 'l12',
+      build(b) {
+        b.fill(0, 14, 8, 4, '#');
+        b.fill(8, 14, 12, 1, 'w');
+        b.fill(20, 14, 12, 4, '#');
+        b.fill(25, 10, 1, 4, 'w');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'cube', x: 13, y: 13 },
+            { t: 'cube', x: 22, y: 13 },
+            { t: 'sign', x: 2, y: 13, k: 'l12.s1' }
+          ]
+        };
+      }
+    },
+
+    // 13 — Başlığa Güvenme: sol üstteki bölüm başlığı aslında sahnenin parçası,
+    // altından geçerken düşer. Radar açıksa, bir kez yalan söyler.
+    {
+      key: 'l13',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        return {
+          spawn: [28, 13],
+          door: { x: 1, y: 13 },
+          ents: [
+            { t: 'pop', x: 8, y: 13, w: 2, trig: [11.5, 3.5], radarHide: true },
+            { t: 'fakeGhost', x: 12, y: 13, w: 2 },
+            { t: 'hud', trig: [0, 6.2] },
+            { t: 'sign', x: 21, y: 13, k: 'l13.s1' }
+          ]
+        };
+      }
+    },
+
+    // 14 — Gölge: bir saniye arkandan seni birebir taklit eden bir gölge var.
+    // Durursan ya da geri dönersen ona çarparsın. Önceki derslerin hepsi burada.
+    {
+      key: 'l14',
+      build(b) {
+        b.fill(0, 14, 7, 4, '#');
+        b.fill(7, 14, 6, 1, '=');
+        b.fill(13, 14, 6, 4, '#');
+        b.fill(15, 13, 1, 1, '^');
+        b.fill(22, 14, 10, 4, '#');
+        b.fill(19, 17, 3, 1, '#');
+        b.fill(19, 16, 3, 1, '^');
+        b.fill(23, 0, 8, 2, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'clone', start: 90, delay: 60 },
+            { t: 'pop', x: 22, y: 13, w: 1, trig: [19, 3] },
+            { t: 'drop', x: 28, y: 2, w: 1, h: 1, trig: [24.6, 0.6] },
+            { t: 'sign', x: 0, y: 13, k: 'l14.s1' }
+          ]
+        };
+      }
+    }
+  ];
+
+  ZT.COLS = COLS;
+  ZT.ROWS = ROWS;
+  ZT.LEVEL_COUNT = LEVELS.length;
+  ZT.LEVEL_KEYS = LEVELS.map((l) => l.key);
 
   ZT.buildLevel = function (idx) {
-    switch (idx) {
-      case 0: return {
-        key: 'l1',
-        spawn: { x: 110, y: 780 },
-        platforms: [
-          solid(0, 880, 520, 200),
-          falling(520, 880, 230, 45, 4),
-          solid(750, 880, 460, 200),
-          invisible(600, 675, 95, 42),
-          solid(1360, 880, 560, 200),
-          invisible(1235, 670, 85, 42)
-        ],
-        spikes: [
-          { x: 350, y: 848, w: 70, h: 32, hidden: true, revealed: false, triggerX: 285, triggerDist: 95 },
-          { x: 960, y: 848, w: 80, h: 32, hidden: true, revealed: false, triggerX: 880, triggerDist: 100 },
-          { x: 520, y: 1045, w: 230, h: 35 },
-          { x: 1210, y: 1045, w: 150, h: 35 }
-        ],
-        signs: [
-          { x: 150, y: 810, k: 'l1.s1' },
-          { x: 830, y: 810, k: 'l1.s2' }
-        ],
-        goal: { x: 1620, y: 770, w: 74, h: 110, path: [1790], texts: ['l1.door'] },
-        fakeGoals: [],
-        reverseZone: null,
-        gravityLineX: null,
-        ceilingSpikes: []
-      };
-
-      case 1: return {
-        key: 'l2',
-        spawn: { x: 100, y: 780 },
-        platforms: [
-          solid(0, 880, 460, 200),
-          solid(580, 780, 320, 300),
-          falling(900, 780, 190, 40, 3),
-          solid(1090, 740, 430, 340),
-          solid(1620, 650, 300, 430),
-          invisible(1515, 470, 90, 40)
-        ],
-        spikes: [
-          { x: 690, y: 748, w: 80, h: 32, hidden: true, revealed: false, triggerX: 620, triggerDist: 95 },
-          { x: 1270, y: 708, w: 90, h: 32 },
-          { x: 460, y: 1045, w: 1160, h: 35 }
-        ],
-        signs: [
-          { x: 120, y: 810, k: 'l2.s1' },
-          { x: 1120, y: 675, k: 'l2.s2' }
-        ],
-        goal: { x: 1770, y: 540, w: 74, h: 110, path: [1650], texts: ['l2.door'] },
-        fakeGoals: [],
-        reverseZone: { x: 1090, w: 530 },
-        gravityLineX: null,
-        ceilingSpikes: []
-      };
-
-      case 2: return {
-        key: 'l3',
-        spawn: { x: 90, y: 800 },
-        platforms: [
-          solid(0, 890, 620, 190),
-          solid(740, 820, 520, 260),
-          solid(1380, 820, 540, 260),
-          // Üst kata çıkan yol. Eski sürümde ilk basamak 200px yüksekteydi
-          // ve zıplama 172px olduğu için bölüm geçilemiyordu.
-          solid(1120, 665, 220, 36),
-          solid(760, 515, 300, 36),
-          solid(320, 380, 350, 36),
-          invisible(1390, 610, 90, 40)
-        ],
-        spikes: [
-          { x: 480, y: 858, w: 70, h: 32, slideToX: 290, triggered: false, triggerX: 230 },
-          { x: 1120, y: 788, w: 75, h: 32, slideToX: 880, triggered: false, triggerX: 800 },
-          { x: 620, y: 1045, w: 120, h: 35 },
-          { x: 1260, y: 1045, w: 120, h: 35 }
-        ],
-        signs: [
-          { x: 1395, y: 755, k: 'l3.s1' },
-          { x: 770, y: 460, k: 'l3.s2' }
-        ],
-        goal: { x: 370, y: 270, w: 74, h: 110, path: [], texts: [] },
-        fakeGoals: [{ x: 1750, y: 710, w: 74, h: 110 }],
-        reverseZone: null,
-        gravityLineX: null,
-        ceilingSpikes: []
-      };
-
-      case 3: return {
-        key: 'l4',
-        spawn: { x: 100, y: 790 },
-        platforms: [
-          solid(0, 880, 860, 200),
-          solid(760, 80, 780, 90),
-          solid(1420, 820, 500, 260)
-        ],
-        spikes: [
-          { x: 430, y: 848, w: 75, h: 32, hidden: true, revealed: false, triggerX: 350, triggerDist: 90 },
-          { x: 1120, y: 170, w: 80, h: 32, hidden: true, revealed: false, triggerX: 1030, triggerDist: 100, inverted: true },
-          { x: 860, y: 1045, w: 560, h: 35 }
-        ],
-        signs: [
-          { x: 150, y: 810, k: 'l4.s1' },
-          { x: 900, y: 240, k: 'l4.s2' }
-        ],
-        goal: { x: 1760, y: 710, w: 74, h: 110, path: [1520], texts: ['l4.door'] },
-        fakeGoals: [],
-        reverseZone: null,
-        gravityLineX: 810,
-        gravityRestoreX: 1460,
-        ceilingSpikes: [{ x: 600, y: 80, w: 60, h: 70, vy: 0, triggered: false, triggerX: 540 }]
-      };
-
-      case 4: return {
-        key: 'l5',
-        spawn: { x: 90, y: 790 },
-        platforms: [
-          solid(0, 880, 380, 200),
-          falling(450, 820, 180, 40, 4),
-          solid(700, 760, 420, 320),
-          falling(1200, 690, 200, 40, 4),
-          solid(1470, 640, 450, 440),
-          invisible(380, 620, 80, 40)
-        ],
-        spikes: [
-          { x: 980, y: 728, w: 75, h: 32, slideToX: 770, triggered: false, triggerX: 730 },
-          { x: 1620, y: 608, w: 70, h: 32, hidden: true, revealed: false, triggerX: 1530, triggerDist: 95 },
-          { x: 380, y: 1045, w: 1090, h: 35 }
-        ],
-        signs: [
-          { x: 60, y: 810, k: 'l5.s1' },
-          { x: 1500, y: 575, k: 'l5.s2' }
-        ],
-        // Eski sürümde ikinci kaçış ilkinden 20px uzaktaydı ve aynı karede tetikleniyordu.
-        goal: { x: 1800, y: 530, w: 74, h: 110, path: [1500, 1830], texts: ['l5.door1', 'l5.door2'] },
-        fakeGoals: [],
-        reverseZone: { x: 700, w: 420 },
-        gravityLineX: null,
-        ceilingSpikes: []
-      };
-    }
-    return null;
+    const def = LEVELS[idx];
+    const b = builder();
+    const meta = def.build(b);
+    return { key: def.key, chars: b.g, spawn: meta.spawn, door: meta.door, ents: meta.ents };
   };
 })(window.ZT);
