@@ -2,7 +2,7 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 14 bölüm. Her biri tek ekran ve tek yeni fikir; sonraki bölümler öğrendiğini sana karşı kullanır
+- 24 bölüm. Her biri tek ekran ve tek yeni fikir; sonraki bölümler öğrendiğini sana karşı kullanır
 - Prosedürel müzik ve ses efektleri (dosyasız, Web Audio)
 - Bölüm başına en iyi süre ve ölüm sayısı, ölüm izleri, duruma göre alaycı mesajlar
 - Türkçe / English
@@ -44,7 +44,9 @@ b.fill(0, 14, 32, 4, '#');   // zemin
 b.fill(13, 16, 4, 1, '^');   // diken
 ```
 
-Kare tipleri: `#` zemin, `~` sahte zemin, `=` çöken kare, `f` sahte çöken kare, `w` zayıf zemin, `?` gizli blok, `x` görünmez tavan dikeni, `^` / `v` diken, `S` yay.
+Kare tipleri: `#` zemin, `~` sahte zemin, `=` çöken kare, `f` sahte çöken kare, `w` zayıf zemin, `c` çatlak duvar (gizli geçit), `?` gizli blok, `x` görünmez tavan dikeni, `^` / `v` diken, `S` yay.
 Tuzaklar (`trapdoor`, `pop`, `drop`, `slide`, `invert`, `chase`) oyuncunun merkezi tetik alanına girince çalışır.
 Diğer nesneler: `key` (kovalayan anahtar + kilitli kapı), `shy` (zıplayınca kaçan platform), `ceil` (ilerlemezsen inen tavan),
-`cube` (devleştiren küp), `hud` (düşen bölüm başlığı), `fakeGhost` (radarın sahte izi), `clone` (bir saniye arkandan gelen gölge).
+`cube` (devleştiren küp), `hud` (düşen bölüm başlığı), `fakeGhost` (radarın sahte izi), `clone` (bir saniye arkandan gelen gölge),
+`window` (platform olan sahte hata penceresi), `gflip` (zıplayınca yerçekimini çeviren alan), `decoy` (sahte kapı),
+`revenge` (önceki ölüm noktaların tuzağa döner).

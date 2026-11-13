@@ -129,12 +129,13 @@
   let shakeAmt = 0;
   let freeze = 0;                 // ölüm anındaki kısa donma
   let transT = 0;                 // bölüm geçiş perdesi
+  let revengeTold = false;
 
   const keys = { left: false, right: false, jump: false };
   let jumpPrev = false;
 
   const player = {
-    x: 0, y: 0, vx: 0, vy: 0, w: PW, h: PH, big: false,
+    x: 0, y: 0, vx: 0, vy: 0, w: PW, h: PH, big: false, grav: 1,
     onGround: false, coyote: 0, buffer: 0, jumping: false, ride: null,
     dead: false, facing: 1, squash: 1, blink: 0, look: { x: 0, y: 0, t: 0 }
   };
@@ -213,6 +214,8 @@
         case 'cube': e.taken = false; break;
         case 'hud': e.px = 30; e.py = 26; e.pw = 0; e.ph = 34; e.vy = 0; e.state = 0; break;
         case 'clone': e.on = false; break;
+        case 'window': e.px = e.x * T; e.py = e.y * T; e.pw = e.w * T; e.ph = e.h * T; e.state = 0; e.anim = 0; break;
+        case 'decoy': e.px = e.x * T; e.py = (e.y - 1) * T; e.ate = 0; break;
       }
       return e;
     });
@@ -232,7 +235,8 @@
       e.masked = [];
       for (let i = e.x; i < e.x + e.w; i++) e.masked.push(...maskBelow(i, e.y + e.h - 1));
     }
-    for (let y = 0; y < ROWS; y++)
+    // Sadece zemindeki sahte karelerin altı gizlenir (tavandaki sahte karelerin değil)
+    for (let y = 9; y < ROWS; y++)
       for (let x = 0; x < COLS; x++)
         if (cells[y][x].k === '~') cells[y][x].masked = maskBelow(x, y);
 
@@ -243,7 +247,17 @@
       fakeWin: d.fakeWin || null, faked: false, jokeTimer: 0,
       locked: !!d.locked, lockMsg: 0
     };
-    return { key: L.key, idx, cells, ents, door, spawn: L.spawn, inverted: false, t: 0, exiting: 0, hist: [], armT: -1 };
+    // Hayalet intikamı: önceki ölüm noktaların bu denemede tuzak olur
+    const sx = (L.spawn[0] + 0.5) * T, sy = (L.spawn[1] + 0.5) * T;
+    const dx = (d.x + 0.5) * T, dy = d.y * T;
+    for (const e of ents) {
+      if (e.t !== 'revenge') continue;
+      e.pts = ghosts
+        .filter((g) => Math.hypot(g.x - sx, g.y - sy) > 150 && Math.hypot(g.x - dx, g.y - dy) > 150 && g.y < ROWS * T)
+        .slice(-e.max)
+        .map((g) => ({ x: g.x, y: g.y }));
+    }
+    return { key: L.key, idx, cells, ents, door, spawn: L.spawn, inverted: false, t: 0, exiting: 0, hist: [], armT: -1, secretOpen: false };
   }
 
   function cellAt(tx, ty) {
@@ -263,7 +277,7 @@
   }
 
   function looksSolid(c) {
-    return c.mask || (c.k === '#' && !(c.trap && c.open)) || (c.k === '~' && !c.broken);
+    return c.mask || (c.k === '#' && !(c.trap && c.open)) || (c.k === '~' && !c.broken) || (c.k === 'c' && !(world && world.secretOpen));
   }
 
   function unmask(list) {
@@ -286,6 +300,7 @@
       if (e.t === 'drop' && e.state === 2) r = { x: e.px, y: e.py, w: e.w * T, h: e.h * T };
       else if (e.t === 'shy') r = { x: e.px, y: e.py, w: e.pw, h: e.ph };
       else if (e.t === 'hud' && e.state === 2) r = { x: e.px, y: e.py, w: e.pw, h: e.ph };
+      else if (e.t === 'window' && e.state === 2) r = { x: e.px, y: e.py, w: e.pw, h: e.ph };
       if (r && overlap(r, box)) { r.c = null; r.ent = e; out.push(r); }
     }
     return out;
@@ -375,7 +390,7 @@
   // ───────────────────────── Bölüm yönetimi ─────────────────────────
   function resetPlayer() {
     Object.assign(player, {
-      w: PW, h: PH, big: false,
+      w: PW, h: PH, big: false, grav: 1,
       x: world.spawn[0] * T + (T - PW) / 2,
       y: (world.spawn[1] + 1) * T - PH,
       vx: 0, vy: 0, onGround: true, coyote: 0, buffer: 0, jumping: false, ride: null,
@@ -386,7 +401,7 @@
 
   function loadLevel(idx, opts) {
     const o = opts || {};
-    if (idx !== levelIdx || o.fresh) { levelDeaths = 0; levelTicks = 0; ghosts = []; }
+    if (idx !== levelIdx || o.fresh) { levelDeaths = 0; levelTicks = 0; ghosts = []; revengeTold = false; }
     levelIdx = idx;
     respawnTimer = 0;
     particles = [];
@@ -505,8 +520,21 @@
     if (p.onGround) p.coyote = COYOTE;
     else if (p.coyote > 0) p.coyote--;
 
-    if (p.buffer > 0 && p.coyote > 0) {
-      p.vy = -(p.big ? BIG_JUMP : JUMP);
+    const flipZone = p.buffer > 0 && p.coyote > 0 && world.ents.find((e) => e.t === 'gflip' && inTrig(e.trig));
+    if (flipZone) {
+      // Mavi alanda zıplamak yerçekimini çevirir
+      p.grav = -p.grav;
+      p.vy = 3 * p.grav;
+      p.coyote = 0;
+      p.buffer = 0;
+      p.onGround = false;
+      p.ride = null;
+      p.squash = 1.3;
+      flipZone.flash = 20;
+      ZT.audio.play('flip');
+      spawnParticles(p.x + p.w / 2, p.y + p.h / 2, '#4fd1ff', 14, 10);
+    } else if (p.buffer > 0 && p.coyote > 0) {
+      p.vy = -(p.big ? BIG_JUMP : JUMP) * p.grav;
       p.coyote = 0;
       p.buffer = 0;
       p.jumping = true;
@@ -524,10 +552,13 @@
         }
       }
     }
-    if (p.jumping && !keys.jump && p.vy < CUT) { p.vy = CUT; p.jumping = false; }
-    if (p.vy >= 0) p.jumping = false;
+    if (p.jumping && !keys.jump && p.vy * p.grav < CUT) { p.vy = CUT * p.grav; p.jumping = false; }
+    if (p.vy * p.grav >= 0) p.jumping = false;
 
-    p.vy = Math.min(MAXFALL, p.vy + G);
+    // Hız sınırı sadece düşüş yönünde (yayın fırlatması kesilmesin)
+    p.vy += G * p.grav;
+    if (p.grav > 0) p.vy = Math.min(MAXFALL, p.vy);
+    else p.vy = Math.max(-MAXFALL, p.vy);
 
     // X ekseni
     p.x += p.vx;
@@ -550,7 +581,7 @@
     p.ride = null;
 
     // Gizli blok: sadece alttan kafa atınca belirir
-    if (p.vy < 0) {
+    if (p.vy < 0 && p.grav > 0) {
       forTiles(p.x, p.y, p.w, p.h, (c, tx, ty) => {
         if (c.k === '?' && !c.rev && prevTop >= (ty + 1) * T - 0.5) {
           c.rev = true;
@@ -565,13 +596,18 @@
       if (p.vy > 0 && prevBottom <= s.y + 0.5) {
         p.y = s.y - p.h;
         p.vy = 0;
-        p.onGround = true;
-        if (s.c) groundCells.push(s.c);
-        if (s.ent && s.ent.t === 'shy') p.ride = s.ent;
+        if (p.grav > 0) {
+          p.onGround = true;
+          if (s.c) groundCells.push(s.c);
+          if (s.ent && s.ent.t === 'shy') p.ride = s.ent;
+        } else p.jumping = false;
       } else if (p.vy < 0 && prevTop >= s.y + s.h - 0.5) {
         p.y = s.y + s.h;
         p.vy = 0;
-        p.jumping = false;
+        if (p.grav < 0) {
+          p.onGround = true;
+          if (s.c) groundCells.push(s.c);
+        } else p.jumping = false;
       }
     }
 
@@ -594,8 +630,19 @@
     if (p.onGround && Math.abs(p.vx) > 5.5 && tick % 6 === 0) dust(p.x + p.w / 2, p.y + p.h, 1, -Math.sign(p.vx));
     p.squash += (1 - p.squash) * 0.22;
 
+    // Gizli geçit: çatlak duvara girince duvar şeffaflaşır
+    if (!world.secretOpen) {
+      forTiles(p.x, p.y, p.w, p.h, (c) => {
+        if (c.k === 'c' && !world.secretOpen) {
+          world.secretOpen = true;
+          ZT.audio.play('trap');
+          toast(t('ev.secret'), 'win');
+        }
+      });
+    }
+
     // Yay
-    if (p.vy >= 0) {
+    if (p.vy >= 0 && p.grav > 0) {
       forTiles(p.x, p.y, p.w, p.h, (c, tx, ty) => {
         if (c.k !== 'S') return;
         const pad = { x: tx * T + 6, y: ty * T + T - 22, w: T - 12, h: 22 };
@@ -740,7 +787,7 @@
                 e.state = 2;
                 e.growl = 20;
                 e.px = e.ox;
-                e.py = e.oy - 30;
+                e.py = e.oy - 100;
                 spawnParticles(e.px, e.py, C.danger, 14, 10);
                 ZT.audio.play('keyTurn');
                 toast(t('ev.keyTurn'), 'death');
@@ -776,9 +823,10 @@
             }
             break;
           }
-          // İlerleme yoksa sabrı tükenir
-          if (player.x > e.best + 3) {
-            e.best = player.x;
+          // Yerinde durursan sabrı tükenir (hangi yöne olursa olsun hareket sayılır)
+          if (e.ax === undefined || Math.hypot(player.x - e.ax, player.y - e.ay) > 40) {
+            e.ax = player.x;
+            e.ay = player.y;
             e.idle = 0;
             e.state = 0;
           } else {
@@ -812,6 +860,33 @@
               spawnParticles(e.px + e.pw / 2, e.py + e.ph, C.ink, 18, 12);
             }
           }
+          break;
+
+        case 'window':
+          if (e.state === 0 && inTrig(e.trig)) {
+            e.state = 1;
+            e.anim = 0;
+            ZT.audio.play('error');
+          } else if (e.state === 1 && ++e.anim >= 8) {
+            e.state = 2;
+          } else if (e.state === 2 && !player.dead) {
+            // Sağ üstteki × kutusuna değersen pencere kapanır
+            const xz = { x: e.px + e.pw - 52, y: e.py - 10, w: 52, h: 44 };
+            if (overlap(xz, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+              e.state = 3;
+              ZT.audio.play('close');
+              spawnParticles(e.px + e.pw - 20, e.py + 18, C.ink, 14, 10);
+              alertLook(e.px + e.pw / 2, e.py + e.ph);
+            }
+          }
+          break;
+
+        case 'gflip':
+          if (e.flash > 0) e.flash--;
+          break;
+
+        case 'decoy':
+          if (e.ate > 0) e.ate--;
           break;
 
         case 'clone':
@@ -912,7 +987,8 @@
           if (e.p > 0.4) {
             for (let i = 0; i < e.w; i++) {
               const h = 30 * e.p;
-              if (overlap(hb, { x: (e.x + i) * T + 8, y: (e.y + 1) * T - h, w: T - 16, h })) {
+              const sy = e.down ? e.y * T : (e.y + 1) * T - h;
+              if (overlap(hb, { x: (e.x + i) * T + 8, y: sy, w: T - 16, h })) {
                 cause = 'die.pop';
                 if (e.radarHide && save.radar) sub = t('ev.radarLie');
               }
@@ -934,6 +1010,16 @@
         case 'hud':
           if (e.state === 1 && overlap(hb, { x: e.px, y: e.py, w: e.pw, h: e.ph })) cause = 'die.hud';
           break;
+        case 'decoy':
+          if (overlap(hb, { x: e.px + 8, y: e.py + 6, w: T - 16, h: 2 * T - 6 })) {
+            cause = 'die.decoy';
+            e.ate = 40;
+            ZT.audio.play('chomp');
+          }
+          break;
+        case 'revenge':
+          for (const g of e.pts) if (overlap(hb, { x: g.x - 13, y: g.y - 13, w: 26, h: 26 })) cause = 'die.revenge';
+          break;
         case 'clone': {
           const cp = clonePos(e);
           if (cp && overlap(hb, { x: cp.x + 8, y: cp.y + 8, w: PW - 16, h: PH - 12 })) cause = 'die.clone';
@@ -942,7 +1028,7 @@
       }
     }
 
-    if (!cause && player.y > ROWS * T + 20) cause = 'die.void';
+    if (!cause && (player.y > ROWS * T + 20 || player.y < -110)) cause = 'die.void';
     if (cause) killPlayer(cause, sub);
   }
 
@@ -951,7 +1037,10 @@
       updateEnts();
       if (--respawnTimer <= 0) {
         world = buildWorld(levelIdx);
-        for (const e of world.ents) if (e.t === 'hud') e.pw = measureHudTitle();
+        for (const e of world.ents) {
+          if (e.t === 'hud') e.pw = measureHudTitle();
+          if (e.t === 'revenge' && e.pts.length && !revengeTold) { revengeTold = true; toast(t('ev.revenge'), 'trap'); }
+        }
         resetPlayer();
       }
       return;
@@ -1214,6 +1303,20 @@
           case 'w':
             if (c.oy < H) drawWeak(c, tx, ty);
             break;
+          case 'c':
+            ctx.save();
+            if (world.secretOpen) ctx.globalAlpha = 0.22;
+            drawSolid(tx, ty);
+            // İnce çatlaklar: dikkatli bakana ipucu
+            ctx.strokeStyle = 'rgba(236,232,223,0.13)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(tx * T + 14, ty * T + 8); ctx.lineTo(tx * T + 24, ty * T + 26); ctx.lineTo(tx * T + 18, ty * T + 44);
+            ctx.moveTo(tx * T + 40, ty * T + 30); ctx.lineTo(tx * T + 48, ty * T + 52);
+            ctx.stroke();
+            ctx.restore();
+            if (radar && !world.secretOpen) dashedRect(tx * T, ty * T, T, T, C.accent);
+            break;
           case '?':
             if (c.rev) {
               ctx.fillStyle = '#1d160a';
@@ -1364,8 +1467,9 @@
           for (let i = 0; i < e.w; i++) {
             const x = (e.x + i) * T + 4;
             const base = (e.y + 1) * T;
-            if (e.p > 0) drawSpikes(x, base, T - 8, 30 * e.p, false, false);
-            else if (radar && !e.radarHide) drawSpikes(x, base, T - 8, 30, false, true);
+            const by = e.down ? e.y * T : base;
+            if (e.p > 0) drawSpikes(x, by, T - 8, 30 * e.p, !!e.down, false);
+            else if (radar && !e.radarHide) drawSpikes(x, by, T - 8, 30, !!e.down, true);
           }
           break;
         case 'fakeGhost':
@@ -1432,6 +1536,18 @@
         case 'hud':
           drawFakeHud(e);
           break;
+        case 'window':
+          drawWindow(e);
+          break;
+        case 'gflip':
+          drawFlipZone(e);
+          break;
+        case 'decoy':
+          drawDoorAt(e.px, e.py, false, save.radar, e.ate);
+          break;
+        case 'revenge':
+          drawRevenge(e);
+          break;
         case 'clone': {
           const cp = clonePos(e);
           if (cp) drawBody(cp.x, cp.y, PW, PH, 1, cp.f, true);
@@ -1469,7 +1585,14 @@
 
   function drawDoor() {
     const d = world.door;
-    const x = d.px, y = d.py, w = T, h = 2 * T;
+    // Çatlak duvarın içindeki gizli kapı, geçit açılana kadar hiç görünmez
+    if (!world.secretOpen && cellAt(Math.floor(d.px / T), Math.floor(d.py / T) + 1).k === 'c') return;
+    drawDoorAt(d.px, d.py, d.locked, save.radar && (d.runIdx < d.runs.length || (d.fakeWin && !d.faked)));
+  }
+
+  function drawDoorAt(x, y, locked, question, ate) {
+    const d = { locked };
+    const w = T, h = 2 * T;
     const pulse = 0.5 + Math.sin(tick * 0.08) * 0.5;
     const col = d.locked ? C.dim : C.ink;
     ctx.save();
@@ -1514,11 +1637,116 @@
     ctx.fillStyle = col;
     ctx.textAlign = 'center';
     ctx.fillText(t('door.exit'), x + w / 2, y - 22);
-    if (save.radar && (d.runIdx < d.runs.length || (d.fakeWin && !d.faked))) {
+    if (question) {
       ctx.fillStyle = C.amber;
       ctx.fillText('?', x + w / 2, y - 42);
     }
+    if (ate > 0) {
+      // Sahte kapının dişleri
+      ctx.fillStyle = C.danger;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        ctx.moveTo(x + 8 + i * 11, y + 40); ctx.lineTo(x + 13.5 + i * 11, y + 62); ctx.lineTo(x + 19 + i * 11, y + 40);
+        ctx.moveTo(x + 8 + i * 11, y + 92); ctx.lineTo(x + 13.5 + i * 11, y + 70); ctx.lineTo(x + 19 + i * 11, y + 92);
+      }
+      ctx.fill();
+    }
     ctx.restore();
+  }
+
+  function drawWindow(e) {
+    if (e.state === 0 || e.state === 3) return;
+    const k = e.state === 1 ? e.anim / 8 : 1;
+    const x = e.px, y = e.py, w = e.pw, h = e.ph;
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.scale(k, k);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = '#e9e7e2';
+    ctx.fillRect(x, y, w, h);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#2b2a31';
+    ctx.fillRect(x, y, w, 34);
+    ctx.font = '600 14px ' + FONT_MONO;
+    ctx.fillStyle = '#ece8df';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText('⚠  ' + t('win.title'), x + 12, y + 18);
+    ctx.fillStyle = '#d9342b';
+    ctx.fillRect(x + w - 44, y, 44, 34);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w - 28, y + 11); ctx.lineTo(x + w - 16, y + 23);
+    ctx.moveTo(x + w - 16, y + 11); ctx.lineTo(x + w - 28, y + 23);
+    ctx.stroke();
+    ctx.fillStyle = '#1a1a1d';
+    ctx.font = '700 18px ' + FONT_DISPLAY;
+    ctx.fillText(t('win.msg'), x + 16, y + 54);
+    ctx.font = '500 12px ' + FONT_MONO;
+    ctx.fillStyle = '#5c5a62';
+    ctx.fillText(t('win.sub'), x + 16, y + 76);
+    // Düğmeler
+    const bw = 104;
+    ctx.fillStyle = '#2f6fed';
+    ctx.fillRect(x + w - bw - 12, y + h - 30, bw, 22);
+    ctx.fillStyle = '#d7d4cc';
+    ctx.fillRect(x + w - bw * 2 - 20, y + h - 30, bw, 22);
+    ctx.font = '600 12px ' + FONT_MONO;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(t('win.ok'), x + w - bw / 2 - 12, y + h - 19);
+    ctx.fillStyle = '#1a1a1d';
+    ctx.fillText(t('win.retry'), x + w - bw * 1.5 - 20, y + h - 19);
+    ctx.strokeStyle = '#9a978f';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.restore();
+  }
+
+  function drawFlipZone(e) {
+    const [x0, y0, w0, h0] = e.trig.length === 4 ? e.trig : [e.trig[0], 0, e.trig[1], ROWS];
+    const x = x0 * T, w = w0 * T;
+    // Zemin ile tavan arasındaki boşluğa çiz
+    const top = Math.max(y0 * T, 3 * T), bottom = Math.min((y0 + h0) * T, 14 * T);
+    ctx.save();
+    ctx.fillStyle = e.flash > 0 ? 'rgba(79,209,255,0.18)' : 'rgba(79,209,255,0.06)';
+    ctx.fillRect(x, top, w, bottom - top);
+    ctx.strokeStyle = 'rgba(79,209,255,0.45)';
+    ctx.setLineDash([8, 8]);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, top + 1, w - 2, bottom - top - 2);
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(79,209,255,0.75)';
+    ctx.font = '700 16px ' + FONT_MONO;
+    ctx.textAlign = 'center';
+    const bob = Math.sin(tick * 0.06) * 8;
+    ctx.fillText('⇅', x + w / 2, (top + bottom) / 2 - 10 + bob);
+    ctx.font = '600 13px ' + FONT_MONO;
+    ctx.fillText(t('zone.flip'), x + w / 2, (top + bottom) / 2 + 16);
+    ctx.restore();
+  }
+
+  function drawRevenge(e) {
+    for (const g of e.pts) {
+      ctx.save();
+      ctx.translate(g.x, g.y);
+      ctx.rotate(tick * 0.05);
+      ctx.shadowColor = 'rgba(255,61,61,0.7)';
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = C.danger;
+      ctx.beginPath();
+      for (let i = 0; i < 16; i++) {
+        const r = i % 2 ? 7 : 15;
+        const a = (i / 16) * Math.PI * 2;
+        ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   // Karakter gövdesi (oyuncu ve gölge klonu)
@@ -1609,13 +1837,20 @@
       ctx.restore();
       return;
     }
+    ctx.save();
+    if (p.grav < 0) {
+      // Ters yerçekiminde karakter baş aşağı çizilir
+      ctx.translate(0, 2 * p.y + p.h);
+      ctx.scale(1, -1);
+    }
     drawBody(p.x, p.y, p.w, p.h, p.squash, p.facing, false, {
       inverted: world.inverted,
       look: p.look,
       blink: p.blink > 0,
-      falling: !p.onGround && p.vy > 9,
+      falling: !p.onGround && p.vy * p.grav > 9,
       running: p.onGround && Math.abs(p.vx) > 6.5
     });
+    ctx.restore();
   }
 
   function drawGhosts() {
@@ -1674,9 +1909,9 @@
     drawMotes();
 
     for (const e of world.ents) if (e.t === 'sign') drawSign(e);
+    drawDoor();
     drawTiles();
     drawGhosts();
-    drawDoor();
     drawEnts();
     drawPlayer();
     renderParticles();

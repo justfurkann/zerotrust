@@ -226,6 +226,21 @@ window.ZT = window.ZT || {};
             break;
           case 'break': noise(0.2, 0.14, 900); break;
           case 'exit': tone('sine', [[523, 0], [1047, 0.18, true]], 0.25, 0.08); break;
+          case 'error':
+            // Klasik sistem hata sesi
+            tone('square', [[660, 0]], 0.12, 0.06);
+            tone('square', [[440, 0]], 0.18, 0.06, 0.13);
+            break;
+          case 'close': tone('sine', [[500, 0], [120, 0.15, true]], 0.18, 0.08); break;
+          case 'flip':
+            tone('sine', [[300, 0], [900, 0.12, true]], 0.16, 0.07);
+            tone('sine', [[900, 0], [300, 0.12, true]], 0.16, 0.04, 0.12);
+            break;
+          case 'chomp':
+            noise(0.08, 0.2, 2000);
+            tone('square', [[180, 0], [90, 0.08, true]], 0.1, 0.12);
+            noise(0.08, 0.2, 2000, null, ac.currentTime + 0.12);
+            break;
           case 'ui': tone('sine', [[880, 0]], 0.05, 0.035); break;
         }
       } catch (e) {}
