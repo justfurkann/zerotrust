@@ -2,7 +2,9 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 8 bölüm. Her biri tek ekran, her tuzağın öğrenilebilir bir çözümü var, sonraki bölümler öğrendiğini sana karşı kullanır
+- 14 bölüm. Her biri tek ekran ve tek yeni fikir; sonraki bölümler öğrendiğini sana karşı kullanır
+- Prosedürel müzik ve ses efektleri (dosyasız, Web Audio)
+- Bölüm başına en iyi süre ve ölüm sayısı, ölüm izleri, duruma göre alaycı mesajlar
 - Türkçe / English
 - Yalnızca masaüstü. Telefon ve tabletten girenlere "PC'den gir" ekranı gösterilir.
 - İlerleme ve ayarlar tarayıcıda (`localStorage`) saklanır.
@@ -42,5 +44,7 @@ b.fill(0, 14, 32, 4, '#');   // zemin
 b.fill(13, 16, 4, 1, '^');   // diken
 ```
 
-Kare tipleri: `#` zemin, `~` sahte zemin, `=` çöken kare, `f` sahte çöken kare, `?` gizli blok, `^` / `v` diken, `S` yay.
+Kare tipleri: `#` zemin, `~` sahte zemin, `=` çöken kare, `f` sahte çöken kare, `w` zayıf zemin, `?` gizli blok, `x` görünmez tavan dikeni, `^` / `v` diken, `S` yay.
 Tuzaklar (`trapdoor`, `pop`, `drop`, `slide`, `invert`, `chase`) oyuncunun merkezi tetik alanına girince çalışır.
+Diğer nesneler: `key` (kovalayan anahtar + kilitli kapı), `shy` (zıplayınca kaçan platform), `ceil` (ilerlemezsen inen tavan),
+`cube` (devleştiren küp), `hud` (düşen bölüm başlığı), `fakeGhost` (radarın sahte izi), `clone` (bir saniye arkandan gelen gölge).

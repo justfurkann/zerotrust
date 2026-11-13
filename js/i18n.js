@@ -93,6 +93,30 @@ window.ZT = window.ZT || {};
       'l8.hint': 'Tanıdık yerler yalan söyler. Kapının peşinden gitmekten vazgeçme.',
       'l8.s1': 'Artık her şeyi biliyorsun.',
 
+      'l9.title': 'Anahtar',
+      'l9.hint': 'Anahtarı alınca arkana bakma, kapıya koş. Dikenleri koşarken atla.',
+      'l9.s1': 'Kapı kilitli. Anahtar orada.',
+
+      'l10.title': 'Ürkek',
+      'l10.hint': 'Platformlar zıpladığın an kaçar. Havada yön düzelt; üçüncüsü sana doğru gelir, sağı bırak.',
+      'l10.s1': 'Platformlar biraz utangaç.',
+
+      'l11.title': 'Sabır',
+      'l11.hint': 'Bu sefer bekleme, tavan sabırsız. Bloğun altından koşarak geç. Diken geri dönecek, iki kez atla.',
+      'l11.s1': 'Acele etme. Düşün.',
+
+      'l12.title': 'İksir',
+      'l12.hint': 'Köprüdeki küpü atla. İkinci küpü al, ağırlığınla duvarı yık.',
+      'l12.s1': 'Güç küpü! Al, güçlen.',
+
+      'l13.title': 'Başlığa Güvenme',
+      'l13.hint': 'Sol üstteki başlık düşer: dur, düşsün, üstüne çık. Radar açıksa ona da güvenme.',
+      'l13.s1': 'Kapı solda. Yukarı bakma.',
+
+      'l14.title': 'Gölge',
+      'l14.hint': 'Gölgen bir saniye arkanda. Bir saniyeden uzun durma, geri dönme. Bloğa çok kısa bir an yavaşla.',
+      'l14.s1': 'Yalnız değilsin.',
+
       'ev.invert': 'Bir şey değişti...',
       'ev.fakeWin': 'Bölüm tamamlandı!',
       'ev.joke': 'Şaka. Kapı başa döndü.',
@@ -107,6 +131,28 @@ window.ZT = window.ZT || {};
       'die.slide': 'Diken seni buldu.',
       'die.void': 'Boşluğa düştün.',
       'die.ghost': 'Görünmez dikenlere kafa attın.',
+      'die.key': 'Anahtar seni yakaladı.',
+      'die.ceil': 'Tavan beklemekten sıkıldı.',
+      'die.boomerang': 'Diken geri döndü.',
+      'die.clone': 'Kendi gölgene çarptın.',
+      'die.hud': 'Bölüm başlığı kafana düştü.',
+
+      'ev.key': 'Anahtar senin. Kapı açıldı.',
+      'ev.keyTurn': 'Anahtarın dişleri var!',
+      'ev.locked': 'Kilitli. Anahtar lazım.',
+      'ev.ceilWarn': 'Tavan sabırsızlanıyor...',
+      'ev.cube': 'Güçlendin! Ve ağırlaştın.',
+      'ev.clone': 'Arkanda biri var.',
+      'ev.hudFall': 'Başlık da mı?!',
+      'ev.radarLie': 'Radara bile mi güvendin? Oyunun adı ZERO TRUST!',
+
+      'ctx.same': 'Aynı tuzağa {n}. kez düştün. Kararlılığına hayranım.',
+      'ctx.fast': 'Dünya rekoru! Daha nefes almadan öldün.',
+      'ctx.door': 'Kapı koluna elin değmişti hâlbuki...',
+
+      'settings.music': 'Müzik',
+      'levels.best': '{t} · {d} ölüm',
+      'end.time': 'Süre {t} · {n} ölüm',
 
       'troll': [
         'Klavyeyi kırma knk, daha yeni başladık.',
@@ -215,6 +261,30 @@ window.ZT = window.ZT || {};
       'l8.hint': 'Familiar places lie. Keep chasing the door.',
       'l8.s1': 'You know everything now.',
 
+      'l9.title': 'The Key',
+      'l9.hint': 'Once you grab the key, don\'t look back. Run for the door and jump the spikes on the way.',
+      'l9.s1': 'The door is locked. The key is over there.',
+
+      'l10.title': 'Shy',
+      'l10.hint': 'Platforms flinch the moment you jump. Steer in mid-air; the third one comes toward you, so let go of right.',
+      'l10.s1': 'The platforms are a little shy.',
+
+      'l11.title': 'Patience',
+      'l11.hint': 'Don\'t wait this time, the ceiling is impatient. Run under the block. The spike comes back, jump it twice.',
+      'l11.s1': 'Take your time. Think.',
+
+      'l12.title': 'Potion',
+      'l12.hint': 'Jump over the cube on the bridge. Take the second one and smash the wall with your weight.',
+      'l12.s1': 'Power cube! Grab it, get stronger.',
+
+      'l13.title': 'Don\'t Trust the Title',
+      'l13.hint': 'The title in the top left falls: stop, let it drop, climb on it. If the radar is on, don\'t trust it either.',
+      'l13.s1': 'The door is on the left. Don\'t look up.',
+
+      'l14.title': 'Shadow',
+      'l14.hint': 'Your shadow is one second behind you. Never stop longer than a second, never turn back. Slow down only briefly for the block.',
+      'l14.s1': 'You are not alone.',
+
       'ev.invert': 'Something changed...',
       'ev.fakeWin': 'Level complete!',
       'ev.joke': 'Just kidding. The door went back to the start.',
@@ -229,6 +299,28 @@ window.ZT = window.ZT || {};
       'die.slide': 'The spike found you.',
       'die.void': 'You fell into the void.',
       'die.ghost': 'You headbutted invisible spikes.',
+      'die.key': 'The key caught you.',
+      'die.ceil': 'The ceiling got tired of waiting.',
+      'die.boomerang': 'The spike came back.',
+      'die.clone': 'You ran into your own shadow.',
+      'die.hud': 'The level title fell on your head.',
+
+      'ev.key': 'Got the key. The door is open.',
+      'ev.keyTurn': 'The key has teeth!',
+      'ev.locked': 'Locked. You need a key.',
+      'ev.ceilWarn': 'The ceiling is getting impatient...',
+      'ev.cube': 'Powered up! And heavier.',
+      'ev.clone': 'Someone is behind you.',
+      'ev.hudFall': 'Even the title?!',
+      'ev.radarLie': 'You trusted the radar? The game is called ZERO TRUST!',
+
+      'ctx.same': 'Same trap, attempt {n}. I admire your dedication.',
+      'ctx.fast': 'World record! Dead before your first breath.',
+      'ctx.door': 'Your hand was already on the doorknob...',
+
+      'settings.music': 'Music',
+      'levels.best': '{t} · {d} deaths',
+      'end.time': 'Time {t} · {n} deaths',
 
       'troll': [
         'Don\'t break the keyboard. We just started.',

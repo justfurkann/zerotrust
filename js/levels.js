@@ -11,8 +11,11 @@
  *   ^  diken (yukarı)   v  diken (aşağı)
  *   x  görünmez tavan dikeni (çarpınca belirir)
  *   S  yay
+ *   w  zayıf zemin (sadece devken kırılır)
  *
  * Tuzaklar (ents) oyuncunun merkezinin bir alana girmesiyle tetiklenir.
+ * Diğer nesneler: key (anahtar), shy (ürkek platform), ceil (sabırsız tavan),
+ * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge).
  * trig: [x, w] → x..x+w sütun aralığı (tüm yükseklik)
  *       [x, y, w, h] → dikdörtgen (kare cinsinden)
  */
@@ -204,6 +207,132 @@ window.ZT = window.ZT || {};
           ents: [
             { t: 'drop', x: 23, y: 2, w: 1, h: 1, trig: [19.2, 0.6] },
             { t: 'sign', x: 2, y: 13, k: 'l8.s1' }
+          ]
+        };
+      }
+    },
+
+    // 09 — Anahtar: kapı kilitli. Anahtarı alınca kapı açılır,
+    // ama anahtar yarım saniye sonra dişlerini gösterip seni kovalar.
+    {
+      key: 'l9',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(13, 13, 2, 1, '^');
+        b.fill(20, 13, 1, 1, '^');
+        b.fill(27, 12, 4, 2, '#');
+        return {
+          spawn: [6, 13],
+          door: { x: 2, y: 13, locked: true },
+          ents: [
+            { t: 'key', x: 29, y: 11, hostile: true, delay: 30, speed: 5.2 },
+            { t: 'sign', x: 8, y: 13, k: 'l9.s1' }
+          ]
+        };
+      }
+    },
+
+    // 10 — Ürkek: platformlar zıpladığın an kaçıyor. Üçüncüsü ise
+    // sana doğru geliyor; sağ tuşu basılı tutan karşıya uçup düşer.
+    {
+      key: 'l10',
+      build(b) {
+        b.fill(0, 14, 6, 4, '#');
+        b.fill(26, 14, 6, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'shy', x: 9, y: 14, w: 2, dx: 80, trig: [3, 3.6] },
+            { t: 'shy', x: 15, y: 14, w: 2, dx: 100, trig: [8.5, 4] },
+            { t: 'shy', x: 21, y: 14, w: 2, dx: -60, trig: [14.5, 5] },
+            { t: 'sign', x: 0, y: 13, k: 'l10.s1' }
+          ]
+        };
+      }
+    },
+
+    // 11 — Sabır: 2. ve 8. bölüm beklemeyi öğretti. Burada tavan sabırsız:
+    // 2 saniye ilerlemezsen iner. Düşen blok koşanı ıskalar, bekleyeni ezer.
+    // Kayan diken duvardan seker ve 1.5 kat hızla arkandan geri gelir.
+    {
+      key: 'l11',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 28, y: 13 },
+          ents: [
+            { t: 'ceil', bottom: 5, warn: 80, slam: 115, start: 45 },
+            { t: 'drop', x: 10, y: 5, w: 1, h: 1, trig: [9.6, 0.5] },
+            { t: 'slide', x: 20, y: 13, to: 12, back: 30, speed: 8, trig: [16, 1] },
+            { t: 'sign', x: 3, y: 13, k: 'l11.s1' }
+          ]
+        };
+      }
+    },
+
+    // 12 — İksir: köprünün ortasındaki parlak küp seni devleştirir,
+    // ağırlığınla köprü kırılır. Onu atla; ikinci küpü al, duvarı yık.
+    {
+      key: 'l12',
+      build(b) {
+        b.fill(0, 14, 8, 4, '#');
+        b.fill(8, 14, 12, 1, 'w');
+        b.fill(20, 14, 12, 4, '#');
+        b.fill(25, 10, 1, 4, 'w');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'cube', x: 13, y: 13 },
+            { t: 'cube', x: 22, y: 13 },
+            { t: 'sign', x: 2, y: 13, k: 'l12.s1' }
+          ]
+        };
+      }
+    },
+
+    // 13 — Başlığa Güvenme: sol üstteki bölüm başlığı aslında sahnenin parçası,
+    // altından geçerken düşer. Radar açıksa, bir kez yalan söyler.
+    {
+      key: 'l13',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        return {
+          spawn: [28, 13],
+          door: { x: 1, y: 13 },
+          ents: [
+            { t: 'pop', x: 8, y: 13, w: 2, trig: [11.5, 3.5], radarHide: true },
+            { t: 'fakeGhost', x: 12, y: 13, w: 2 },
+            { t: 'hud', trig: [0, 6.2] },
+            { t: 'sign', x: 21, y: 13, k: 'l13.s1' }
+          ]
+        };
+      }
+    },
+
+    // 14 — Gölge: bir saniye arkandan seni birebir taklit eden bir gölge var.
+    // Durursan ya da geri dönersen ona çarparsın. Önceki derslerin hepsi burada.
+    {
+      key: 'l14',
+      build(b) {
+        b.fill(0, 14, 7, 4, '#');
+        b.fill(7, 14, 6, 1, '=');
+        b.fill(13, 14, 6, 4, '#');
+        b.fill(15, 13, 1, 1, '^');
+        b.fill(22, 14, 10, 4, '#');
+        b.fill(19, 17, 3, 1, '#');
+        b.fill(19, 16, 3, 1, '^');
+        b.fill(23, 0, 8, 2, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'clone', start: 90, delay: 60 },
+            { t: 'pop', x: 22, y: 13, w: 1, trig: [19, 3] },
+            { t: 'drop', x: 28, y: 2, w: 1, h: 1, trig: [24.6, 0.6] },
+            { t: 'sign', x: 0, y: 13, k: 'l14.s1' }
           ]
         };
       }

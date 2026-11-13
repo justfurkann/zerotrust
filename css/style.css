@@ -135,6 +135,17 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
   letter-spacing: -0.01em;
 }
 
+.hud-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  min-width: calc(var(--u) * 8);
+  text-align: right;
+}
+
+/* 13. bölümde sol üstteki gerçek başlık gizlenir; yerine sahnede çizilen sahtesi durur */
+#hud.fake-title .hud-l { visibility: hidden; }
+
 .hud-deaths { display: flex; align-items: baseline; gap: calc(var(--u) * 0.8); color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
 .hud-deaths b { color: var(--danger); font-size: calc(var(--u) * 2.2); letter-spacing: 0; }
 
@@ -425,7 +436,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .level-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: calc(var(--u) * 1.6);
   padding: calc(var(--u) * 1) calc(var(--u) * 5) calc(var(--u) * 5);
@@ -437,7 +448,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  padding: calc(var(--u) * 2.6);
+  padding: calc(var(--u) * 2);
   background: rgba(16, 16, 20, 0.85);
   border: 1px solid var(--line);
   text-align: left;
@@ -465,7 +476,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .lvl-num {
   font-family: var(--display);
   font-weight: 700;
-  font-size: calc(var(--u) * 8);
+  font-size: calc(var(--u) * 6);
   line-height: 0.9;
   letter-spacing: -0.05em;
   color: transparent;
@@ -479,8 +490,9 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
   margin-top: auto;
   font-family: var(--display);
   font-weight: 700;
-  font-size: calc(var(--u) * 2.6);
+  font-size: calc(var(--u) * 2);
   letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .lvl-status {
@@ -492,6 +504,12 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--dim);
+}
+.lvl-stat {
+  margin-top: calc(var(--u) * 0.6);
+  font-size: calc(var(--u) * 1.15);
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
 }
 .lvl-status i { width: calc(var(--u) * 0.8); height: calc(var(--u) * 0.8); background: var(--ink); }
 .lvl.cleared .lvl-status { color: var(--accent); }
