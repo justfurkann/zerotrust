@@ -130,6 +130,10 @@
   let freeze = 0;                 // ölüm anındaki kısa donma
   let transT = 0;                 // bölüm geçiş perdesi
   let revengeTold = false;
+  let rings = [];                 // ölüm / iniş şok dalgaları
+  let trail = [];                 // hızlı hareket izi
+  let demoRun = 0;                // menüdeki demonun kaçıncı denemesi
+  let chapterSel = 0;             // bölüm seçiminde açık perde
 
   const keys = { left: false, right: false, jump: false };
   let jumpPrev = false;
@@ -334,6 +338,7 @@
   let toastTimer = null;
 
   function toast(main, kind, sub) {
+    if (screen === 'menu') return;   // demo sessizdir
     toastMain.textContent = main;
     toastSub.textContent = sub || '';
     toastSub.hidden = !sub;
@@ -354,6 +359,8 @@
   function showIntro() {
     $('introNum').textContent = t('levels.level') + ' ' + pad2(levelIdx + 1);
     $('introTitle').textContent = t(ZT.LEVEL_KEYS[levelIdx] + '.title');
+    const ch = ZT.CHAPTERS[ZT.chapterOf(levelIdx)];
+    $('introCh').textContent = t(ch.key + '.name') + ' · ' + t(ch.key + '.title');
     introEl.classList.remove('on');
     void introEl.offsetWidth;
     introEl.classList.add('on');
@@ -376,6 +383,8 @@
     $('hudNum').textContent = pad2(levelIdx + 1);
     $('hudTitle').textContent = t(ZT.LEVEL_KEYS[levelIdx] + '.title');
     $('hudDeaths').textContent = String(save.deaths);
+    $('hudLDeaths').textContent = String(levelDeaths);
+    $('hudBest').textContent = fmtTime(save.best[levelIdx]);
     $('hudRadar').hidden = !save.radar;
     $('hudTime').textContent = fmtTime(levelTicks);
     $('hintText').textContent = t(ZT.LEVEL_KEYS[levelIdx] + '.hint');
@@ -397,6 +406,7 @@
       dead: false, facing: world.spawn[0] > COLS / 2 ? -1 : 1, squash: 1, look: { x: 0, y: 0, t: 0 }
     });
     jumpPrev = keys.jump;
+    trail = [];
   }
 
   function loadLevel(idx, opts) {
@@ -405,6 +415,8 @@
     levelIdx = idx;
     respawnTimer = 0;
     particles = [];
+    rings = [];
+    paintLevelBg(idx);
     world = buildWorld(idx);
     for (const e of world.ents) if (e.t === 'hud') e.pw = measureHudTitle();
     resetPlayer();
@@ -417,17 +429,30 @@
     player.dead = true;
     respawnTimer = 30;
     freeze = 7;
+    const cx = player.x + player.w / 2, cy = player.y + player.h / 2;
+    spawnParticles(cx, cy, world.inverted ? C.purple : C.accent, 18, 16);
+    spawnParticles(cx, cy, C.danger, 14, 12);
+    rings.push({ x: cx, y: cy, r: 10, life: 22, max: 22, color: '255,61,61' });
+
+    // Menüdeki demo: ölüm sayılmaz, ses ve bildirim yok
+    if (screen === 'menu') {
+      demoRun++;
+      ghosts.push({ x: cx, y: cy });
+      if (ghosts.length > 10) ghosts.shift();
+      return;
+    }
+
     save.deaths++;
     save.ldeaths[levelIdx] = (save.ldeaths[levelIdx] || 0) + 1;
     levelDeaths++;
     persist();
     ZT.audio.play('die');
     ZT.audio.duck();
-
-    const cx = player.x + player.w / 2, cy = player.y + player.h / 2;
-    spawnParticles(cx, cy, world.inverted ? C.purple : C.accent, 18, 16);
-    spawnParticles(cx, cy, C.danger, 14, 12);
     flash();
+    const dEl = document.querySelector('.hud-stat.deaths');
+    dEl.classList.remove('bump');
+    void dEl.offsetWidth;
+    dEl.classList.add('bump');
 
     // Duruma göre alaycı mesaj
     let sub = forcedSub;
@@ -449,12 +474,22 @@
   }
 
   function completeLevel() {
+    if (screen === 'menu') {         // demo kapıya ulaştı: başa sar
+      demoRun++;
+      loadLevel(0, { silent: true, fresh: true });
+      return;
+    }
     save.cleared[levelIdx] = true;
-    if (save.best[levelIdx] == null || levelTicks < save.best[levelIdx]) save.best[levelIdx] = levelTicks;
+    const prev = save.best[levelIdx];
+    const record = prev == null || levelTicks < prev;
+    const timeNote = prev == null ? fmtTime(levelTicks)
+      : record ? t('ev.record', { t: fmtTime(levelTicks) })
+        : t('ev.time', { t: fmtTime(levelTicks), b: fmtTime(prev) });
+    if (record) save.best[levelIdx] = levelTicks;
     save.unlocked = Math.min(N - 1, Math.max(save.unlocked, levelIdx + 1));
     persist();
     if (levelIdx < N - 1) {
-      toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win');
+      toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', timeNote);
       transT = TRANS_T;
       loadLevel(levelIdx + 1, { fresh: true });
     } else {
@@ -625,6 +660,7 @@
       p.squash = 0.78;
       ZT.audio.play('land');
       dust(p.x + p.w / 2, p.y + p.h, 6);
+      if (impact > 15) rings.push({ x: p.x + p.w / 2, y: p.y + p.h, r: 6, life: 12, max: 12, color: '236,232,223' });
       if (p.big) shakeAmt = 6;
     }
     if (p.onGround && Math.abs(p.vx) > 5.5 && tick % 6 === 0) dust(p.x + p.w / 2, p.y + p.h, 1, -Math.sign(p.vx));
@@ -1070,15 +1106,35 @@
       p.vx *= 0.98;
       if (--p.life <= 0) particles.splice(i, 1);
     }
+    for (let i = rings.length - 1; i >= 0; i--) {
+      const r = rings[i];
+      r.r += 7;
+      if (--r.life <= 0) rings.splice(i, 1);
+    }
+    // Hızlı hareket ederken arkada kısa bir iz kalır
+    if (!player.dead && (Math.abs(player.vx) > 6.8 || Math.abs(player.vy) > 12)) {
+      trail.push({ x: player.x, y: player.y, w: player.w, h: player.h, life: 8 });
+    }
+    for (let i = trail.length - 1; i >= 0; i--) if (--trail[i].life <= 0) trail.splice(i, 1);
+  }
+
+  // Menüde oyun kendi kendine oynar: iki kez tuzağa düşer, üçüncüde atlar, kapı yine kaçar
+  function demoInput() {
+    const cx = (player.x + player.w / 2) / T;
+    keys.left = false;
+    keys.right = true;
+    keys.jump = demoRun % 3 === 2 && cx > 12.7 && cx < 13.8;
   }
 
   function step() {
     tick++;
-    if (screen === 'playing') {
+    ZT.audio.quiet = screen === 'menu';
+    if (screen === 'playing' || screen === 'menu') {
+      if (screen === 'menu') demoInput();
       if (freeze > 0) freeze--;
       else updateWorld();
       updateParticles();
-      if (tick % 6 === 0) $('hudTime').textContent = fmtTime(levelTicks);
+      if (screen === 'playing' && tick % 6 === 0) $('hudTime').textContent = fmtTime(levelTicks);
     }
     if (transT > 0) transT--;
     if (shakeAmt > 0) shakeAmt *= 0.82;
@@ -1088,37 +1144,92 @@
   }
 
   // ───────────────────────── Çizim ─────────────────────────
+  // Arka plan bölüm başına bir kez boyanır: perde tonu, uzak siluetler, dev numara
   const bgCanvas = document.createElement('canvas');
   bgCanvas.width = W;
   bgCanvas.height = H;
-  (function paintBackground() {
+  function paintLevelBg(idx) {
     const b = bgCanvas.getContext('2d');
+    const tint = ZT.CHAPTERS[ZT.chapterOf(idx)].tint.join(',');
+    let seed = 11 + idx * 97;
+    const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
     b.fillStyle = C.bg;
     b.fillRect(0, 0, W, H);
+
+    // Perde renginde uzak ışık
+    const glow = b.createRadialGradient(W * 0.72, H * 0.3, 0, W * 0.72, H * 0.3, W * 0.6);
+    glow.addColorStop(0, 'rgba(' + tint + ',0.07)');
+    glow.addColorStop(1, 'rgba(' + tint + ',0)');
+    b.fillStyle = glow;
+    b.fillRect(0, 0, W, H);
+
+    // Uzak siluetler: zeminle karışmayacak kadar silik
+    for (let i = 0; i < 9; i++) {
+      const w = (2 + Math.floor(rnd() * 4)) * T;
+      const x = Math.floor(rnd() * (COLS - 2)) * T;
+      const h = (3 + Math.floor(rnd() * 8)) * T;
+      b.fillStyle = 'rgba(236,232,223,' + (0.008 + rnd() * 0.012).toFixed(3) + ')';
+      if (rnd() > 0.45) b.fillRect(x, H - h, w, h);
+      else b.fillRect(x, 0, w, h * 0.6);
+    }
+
+    // Izgara: ince çizgiler ve kesişim noktaları
+    b.fillStyle = 'rgba(236,232,223,0.014)';
+    for (let x = T; x < W; x += T) b.fillRect(x, 0, 1, H);
+    for (let y = T; y < H; y += T) b.fillRect(0, y, W, 1);
     b.fillStyle = C.dot;
-    for (let x = T; x < W; x += T) for (let y = T; y < H; y += T) b.fillRect(x - 1, y - 1, 2, 2);
+    for (let x = T; x < W; x += T) for (let y = T; y < H; y += T) b.fillRect(x - 1, y - 1, 3, 3);
+
+    // Dev bölüm numarası (kontur)
+    b.font = '700 560px ' + FONT_DISPLAY;
+    b.textAlign = 'right';
+    b.textBaseline = 'alphabetic';
+    b.fillStyle = 'rgba(236,232,223,0.014)';
+    b.fillText(pad2(idx + 1), W - 50, 640);
+    b.lineWidth = 2;
+    b.strokeStyle = 'rgba(' + tint + ',0.09)';
+    b.strokeText(pad2(idx + 1), W - 50, 640);
+
     const v = b.createRadialGradient(W / 2, H * 0.45, H * 0.25, W / 2, H / 2, W * 0.75);
     v.addColorStop(0, 'rgba(0,0,0,0)');
-    v.addColorStop(1, 'rgba(0,0,0,0.6)');
+    v.addColorStop(1, 'rgba(0,0,0,0.62)');
     b.fillStyle = v;
     b.fillRect(0, 0, W, H);
-  })();
+  }
+  // Yazı tipi sonradan yüklenirse numara doğru fontla yeniden çizilsin
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => paintLevelBg(levelIdx));
 
-  // Zemin dokusu: düz renk yerine hafif gren ve derinlik
-  const tileTex = document.createElement('canvas');
-  tileTex.width = T;
-  tileTex.height = T;
-  (function paintTile() {
-    const b = tileTex.getContext('2d');
-    b.fillStyle = '#151519';
+  // Zemin dokusu: yüzeyden derine doğru koyulaşan dört ton
+  const TILE_TONES = ['#1e1e25', '#17171c', '#121216', '#0e0e11'];
+  const tileTex = TILE_TONES.map((tone, d) => {
+    const cv = document.createElement('canvas');
+    cv.width = T;
+    cv.height = T;
+    const b = cv.getContext('2d');
+    b.fillStyle = tone;
     b.fillRect(0, 0, T, T);
-    let seed = 7;
+    let seed = 7 + d * 31;
     const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
-    for (let i = 0; i < 26; i++) {
-      b.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.18)';
+    for (let i = 0; i < 22; i++) {
+      b.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.2)';
       b.fillRect(Math.floor(rnd() * T), Math.floor(rnd() * T), 2, 2);
     }
-  })();
+    if (d === 0) {
+      // Yüzey karesinde hafif çapraz tarama
+      b.strokeStyle = 'rgba(236,232,223,0.035)';
+      b.lineWidth = 2;
+      b.beginPath();
+      for (let i = -T; i < T; i += 12) { b.moveTo(i, T); b.lineTo(i + T, 0); }
+      b.stroke();
+    }
+    return cv;
+  });
+
+  function tileDepth(tx, ty) {
+    let d = 0;
+    while (d < 3 && ty - d - 1 >= 0 && looksSolid(cellAt(tx, ty - d - 1))) d++;
+    return d;
+  }
 
   // Havada süzülen toz zerreleri (atmosfer)
   const motes = Array.from({ length: 48 }, (_, i) => ({
@@ -1149,17 +1260,26 @@
 
   function drawSolid(tx, ty, oy) {
     const x = tx * T, y = ty * T + (oy || 0);
-    ctx.drawImage(tileTex, x, y);
-    if (!looksSolid(cellAt(tx, ty - 1))) {
+    const d = tileDepth(tx, ty);
+    ctx.drawImage(tileTex[d], x, y);
+    if (d === 0) {
       ctx.fillStyle = C.edge;
       ctx.fillRect(x, y, T, 4);
-      ctx.fillStyle = 'rgba(236,232,223,0.06)';
-      ctx.fillRect(x, y + 4, T, 6);
+      ctx.fillStyle = 'rgba(236,232,223,0.07)';
+      ctx.fillRect(x, y + 4, T, 5);
     }
     ctx.fillStyle = C.platSide;
     if (!looksSolid(cellAt(tx - 1, ty))) ctx.fillRect(x, y, 2, T);
     if (!looksSolid(cellAt(tx + 1, ty))) ctx.fillRect(x + T - 2, y, 2, T);
-    if (!looksSolid(cellAt(tx, ty + 1))) ctx.fillRect(x, y + T - 2, T, 2);
+    if (ty + 1 < ROWS && !looksSolid(cellAt(tx, ty + 1))) {
+      ctx.fillRect(x, y + T - 2, T, 2);
+      // Platformun altına düşen gölge
+      const sh = ctx.createLinearGradient(0, y + T, 0, y + T + 26);
+      sh.addColorStop(0, 'rgba(0,0,0,0.5)');
+      sh.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sh;
+      ctx.fillRect(x, y + T, T, 26);
+    }
   }
 
   function drawCrumble(c, tx, ty) {
@@ -1271,7 +1391,7 @@
       for (let tx = 0; tx < COLS; tx++) {
         const c = world.cells[ty][tx];
         if (c.mask) {
-          ctx.drawImage(tileTex, tx * T, ty * T);
+          ctx.drawImage(tileTex[tileDepth(tx, ty)], tx * T, ty * T);
           continue;
         }
         switch (c.k) {
@@ -1478,7 +1598,7 @@
         case 'drop':
           if (e.state < 3) {
             const w = e.w * T, h = e.h * T;
-            ctx.drawImage(tileTex, e.px, e.py, w, h);
+            ctx.drawImage(tileTex[1], e.px, e.py, w, h);
             ctx.strokeStyle = C.platSide;
             ctx.lineWidth = 2;
             ctx.strokeRect(e.px + 1, e.py + 1, w - 2, h - 2);
@@ -1823,8 +1943,17 @@
   }
 
   function drawPlayer() {
-    if (player.dead || (screen !== 'playing' && screen !== 'paused')) return;
+    if (player.dead || (screen !== 'playing' && screen !== 'paused' && screen !== 'menu')) return;
     const p = player;
+    if (world.exiting === 0) {
+      ctx.save();
+      ctx.fillStyle = world.inverted ? C.purple : C.accent;
+      for (const tr of trail) {
+        ctx.globalAlpha = (tr.life / 8) * 0.16;
+        ctx.fillRect(tr.x, tr.y, tr.w, tr.h);
+      }
+      ctx.restore();
+    }
     if (world.exiting > 0) {
       // Kapıya doğru küçülerek girer
       const k = world.exiting / EXIT_T;
@@ -1879,6 +2008,14 @@
       ctx.fillStyle = p.color;
       ctx.fillRect(p.x, p.y, p.size, p.size);
     }
+    ctx.lineWidth = 3;
+    for (const r of rings) {
+      ctx.globalAlpha = (r.life / r.max) * 0.7;
+      ctx.strokeStyle = 'rgb(' + r.color + ')';
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -1898,17 +2035,9 @@
     if (shakeAmt > 0) ctx.translate((Math.random() - 0.5) * shakeAmt, (Math.random() - 0.5) * shakeAmt);
     ctx.drawImage(bgCanvas, 0, 0);
 
-    // Arka planda dev bölüm numarası
-    ctx.save();
-    ctx.font = '700 520px ' + FONT_DISPLAY;
-    ctx.fillStyle = 'rgba(236,232,223,0.022)';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(pad2(levelIdx + 1), W - 40, 620);
-    ctx.restore();
     drawMotes();
 
-    for (const e of world.ents) if (e.t === 'sign') drawSign(e);
+    if (screen !== 'menu') for (const e of world.ents) if (e.t === 'sign') drawSign(e);
     drawDoor();
     drawTiles();
     drawGhosts();
@@ -1962,21 +2091,50 @@
     return sum;
   }
 
+  function clearedCount() {
+    return save.cleared.filter(Boolean).length;
+  }
+
+  function levelLabel(i) {
+    return pad2(i + 1) + ' · ' + t(ZT.LEVEL_KEYS[i] + '.title');
+  }
+
+  function refreshPause() {
+    $('pauseNum').textContent = pad2(levelIdx + 1);
+    $('pauseTitle').textContent = t(ZT.LEVEL_KEYS[levelIdx] + '.title');
+    $('pauseTime').textContent = fmtTime(levelTicks);
+    $('pauseBest').textContent = fmtTime(save.best[levelIdx]);
+    $('pauseDeaths').textContent = String(levelDeaths);
+  }
+
+  function refreshEnd() {
+    let worst = 0;
+    for (let i = 1; i < N; i++) if ((save.ldeaths[i] || 0) > (save.ldeaths[worst] || 0)) worst = i;
+    $('endCleared').textContent = clearedCount() + '/' + N;
+    $('endTime').textContent = fmtTime(totalBest());
+    $('endDeaths').textContent = String(save.deaths);
+    $('endWorst').textContent = save.ldeaths[worst] ? levelLabel(worst) : '–';
+  }
+
   function setScreen(name) {
+    const prev = screen;
     screen = name;
+    stage.dataset.screen = name;
     const overlay = name === 'paused' ? 'pause' : name;
     SCREENS.forEach((s) => $('scr-' + s).classList.toggle('on', s === overlay));
     const inGame = name === 'playing' || name === 'paused';
     $('hud').classList.toggle('on', inGame);
     stage.classList.toggle('in-menu', !inGame);
-    if (name !== 'playing') {
-      keys.left = keys.right = keys.jump = false;
-      hideToast();
-    }
+    if (name !== 'playing' || prev === 'menu') keys.left = keys.right = keys.jump = false;
+    if (name !== 'playing') hideToast();
     if (name === 'menu') refreshMenu();
-    if (name === 'levels') renderLevelGrid();
+    if (name === 'levels') {
+      chapterSel = ZT.chapterOf(levelsReturn === 'paused' ? levelIdx : firstUnfinished());
+    }
     if (name === 'settings') refreshSettings();
-    if (name === 'end') $('endSub').textContent = t('end.time', { t: fmtTime(totalBest()), n: save.deaths });
+    if (name === 'paused') refreshPause();
+    if (name === 'end') refreshEnd();
+    if (name === 'levels') { setChapter(chapterSel); return; }
     const focusTarget = document.querySelector('#scr-' + overlay + ' [data-autofocus]');
     if (focusTarget) focusTarget.focus({ preventScroll: true });
     else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -1995,33 +2153,190 @@
 
   function refreshMenu() {
     const started = save.unlocked > 0 || save.deaths > 0;
+    const done = clearedCount();
     $('btnPlayLabel').textContent = t(started ? 'menu.continue' : 'menu.play');
+    $('btnPlayNote').textContent = started ? levelLabel(firstUnfinished()) : '';
     $('menuDeaths').textContent = String(save.deaths);
+    $('menuProgress').textContent = pad2(done);
+    $('menuTotal').textContent = '/' + N;
+    $('menuMeter').style.width = (done / N) * 100 + '%';
+    $('menuTime').textContent = done ? fmtTime(totalBest()) : '–';
     document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('active', b.dataset.lang === ZT.getLang()));
-    if (levelIdx !== 0 || player.dead) loadLevel(0, { silent: true });
+    if (levelIdx !== 0 || player.dead || world.t === 0 || levelDeaths) {
+      demoRun = 0;
+      loadLevel(0, { silent: true, fresh: true });
+    }
+  }
+
+  // Bölümün küçük haritası. Yalnızca oyuncunun zaten gördüğü şeyler çizilir:
+  // gizli bloklar ve tuzaklar burada da görünmez, sahte zemin sağlam görünür.
+  const THUMB_W = 320, THUMB_H = 180;
+  function drawThumb(cv, idx) {
+    const L = ZT.buildLevel(idx);
+    const g = cv.getContext('2d');
+    const cols = L.chars[0].length;
+    const u = THUMB_W / cols;
+    const oy = (THUMB_H - ROWS * u) / 2;
+    const solid = (x, y) => y >= 0 && y < ROWS && x >= 0 && x < cols && '#~c'.includes(L.chars[y][x]);
+    g.fillStyle = '#08080a';
+    g.fillRect(0, 0, THUMB_W, THUMB_H);
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < cols; x++) {
+        const k = L.chars[y][x];
+        const px = x * u, py = oy + y * u;
+        if (solid(x, y)) {
+          g.fillStyle = '#26252d';
+          g.fillRect(px, py, u, u);
+          if (!solid(x, y - 1)) { g.fillStyle = '#ece8df'; g.fillRect(px, py, u, 1.5); }
+        } else if (k === '=' || k === 'f') {
+          g.fillStyle = '#7b7984';
+          g.fillRect(px + 1, py, u - 2, 2);
+        } else if (k === 'w') {
+          g.fillStyle = '#b9a58a';
+          g.fillRect(px, py, u, 2);
+        } else if (k === '^') {
+          g.fillStyle = '#ff3d3d';
+          g.fillRect(px + 1, py + u / 2, u - 2, u / 2);
+        } else if (k === 'v') {
+          g.fillStyle = '#ff3d3d';
+          g.fillRect(px + 1, py, u - 2, u / 2);
+        } else if (k === 'S') {
+          g.fillStyle = '#c8ff3d';
+          g.fillRect(px + 1, py + u - 3, u - 2, 3);
+        }
+      }
+    }
+    for (const e of L.ents) {
+      if (e.t === 'shy') { g.fillStyle = '#7b7984'; g.fillRect(e.x * u, oy + e.y * u, e.w * u, 3); }
+      if (e.t === 'gflip') { g.fillStyle = 'rgba(79,209,255,0.18)'; g.fillRect(e.trig[0] * u, oy + 3 * u, e.trig[2] * u, 11 * u); }
+    }
+    const door = (x, y) => {
+      g.strokeStyle = '#c8ff3d';
+      g.lineWidth = 1.5;
+      g.strokeRect(x * u + 1.5, oy + (y - 1) * u + 1, u - 3, 2 * u - 1);
+    };
+    if (L.chars[L.door.y][L.door.x] !== 'c') door(L.door.x, L.door.y);
+    for (const e of L.ents) if (e.t === 'decoy') door(e.x, e.y);
+    g.fillStyle = '#c8ff3d';
+    g.fillRect(L.spawn[0] * u + u * 0.2, oy + L.spawn[1] * u + u * 0.1, u * 0.6, u * 0.9);
   }
 
   function renderLevelGrid() {
+    const next = firstUnfinished();
+
+    const rail = $('chRail');
+    rail.innerHTML = '';
+    ZT.CHAPTERS.forEach((ch, ci) => {
+      const total = ch.to - ch.from + 1;
+      let done = 0;
+      for (let i = ch.from; i <= ch.to; i++) if (save.cleared[i]) done++;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ch' + (ci === chapterSel ? ' active' : '') + (save.unlocked < ch.from ? ' locked' : '');
+      b.style.setProperty('--ch', 'rgb(' + ch.tint.join(',') + ')');
+      b.innerHTML = '<span class="ch-name"></span><span class="ch-title"></span><span class="ch-prog"><span></span><span class="meter"><i></i></span></span>';
+      b.querySelector('.ch-name').textContent = t(ch.key + '.name') + ' · ' + pad2(ch.from + 1) + '–' + pad2(ch.to + 1);
+      b.querySelector('.ch-title').textContent = t(ch.key + '.title');
+      b.querySelector('.ch-prog span').textContent = done + '/' + total;
+      b.querySelector('.meter i').style.width = (done / total) * 100 + '%';
+      b.addEventListener('click', () => { ZT.audio.play('ui'); setChapter(ci, true); });
+      rail.appendChild(b);
+    });
+
     const grid = $('levelGrid');
     grid.innerHTML = '';
-    for (let i = 0; i < N; i++) {
+    const ch = ZT.CHAPTERS[chapterSel];
+    let chDone = 0;
+    for (let i = ch.from; i <= ch.to; i++) if (save.cleared[i]) chDone++;
+    $('chHero').style.setProperty('--ch', 'rgb(' + ch.tint.join(',') + ')');
+    $('chHeroName').textContent = t(ch.key + '.name') + ' · ' + pad2(ch.from + 1) + '–' + pad2(ch.to + 1);
+    $('chHeroTitle').textContent = t(ch.key + '.title');
+    $('chHeroDesc').textContent = t(ch.key + '.desc');
+    $('chHeroDone').textContent = String(chDone);
+    $('chHeroTotal').textContent = '/' + (ch.to - ch.from + 1);
+    let focusCard = null, pinned = false;
+    for (let i = ch.from; i <= ch.to; i++) {
       const unlocked = i <= save.unlocked;
       const cleared = save.cleared[i];
+      const isNext = unlocked && i === next && !cleared;
       const card = document.createElement('button');
       card.type = 'button';
-      card.className = 'lvl' + (unlocked ? '' : ' locked') + (cleared ? ' cleared' : '');
+      card.className = 'lvl' + (unlocked ? '' : ' locked') + (cleared ? ' cleared' : '') + (isNext ? ' next' : '');
       card.disabled = !unlocked;
-      const status = cleared ? t('levels.cleared') : unlocked ? t('levels.open') : t('levels.locked');
-      card.innerHTML = '<span class="lvl-num"></span><span class="lvl-title"></span><span class="lvl-status"><i></i><span></span></span><span class="lvl-stat"></span>';
+      card.style.setProperty('--i', i - ch.from);
+      card.innerHTML = '<span class="lvl-thumb"></span><span class="lvl-info"><span class="lvl-num"></span><span class="lvl-title"></span><span class="lvl-stat"><i></i></span></span>';
+      const thumb = card.querySelector('.lvl-thumb');
+      if (unlocked) {
+        const cv = document.createElement('canvas');
+        cv.width = THUMB_W;
+        cv.height = THUMB_H;
+        drawThumb(cv, i);
+        thumb.appendChild(cv);
+      } else {
+        const lock = document.createElement('span');
+        lock.className = 'lvl-lock';
+        lock.textContent = t('levels.locked');
+        thumb.appendChild(lock);
+      }
+      if (isNext) {
+        const flag = document.createElement('span');
+        flag.className = 'lvl-flag';
+        flag.textContent = t('levels.next');
+        thumb.appendChild(flag);
+      }
       card.querySelector('.lvl-num').textContent = pad2(i + 1);
-      card.querySelector('.lvl-title').textContent = t(ZT.LEVEL_KEYS[i] + '.title');
-      card.querySelector('.lvl-status span').textContent = status;
-      card.querySelector('.lvl-stat').textContent = cleared ? t('levels.best', { t: fmtTime(save.best[i]), d: save.ldeaths[i] || 0 }) : '';
+      card.querySelector('.lvl-title').textContent = unlocked ? t(ZT.LEVEL_KEYS[i] + '.title') : '? ? ?';
+      const stat = card.querySelector('.lvl-stat');
+      if (cleared) {
+        const tm = document.createElement('b');
+        tm.textContent = fmtTime(save.best[i]);
+        const dd = document.createElement('span');
+        dd.className = 'danger';
+        dd.textContent = '✕ ' + (save.ldeaths[i] || 0);
+        stat.append(tm, dd);
+      } else {
+        const sp = document.createElement('span');
+        sp.textContent = !unlocked ? t('levels.locked') : (save.ldeaths[i] ? '✕ ' + save.ldeaths[i] + ' · ' : '') + t('levels.none');
+        stat.appendChild(sp);
+      }
       if (unlocked) card.addEventListener('click', () => { ZT.audio.play('ui'); startLevel(i); });
+      const current = levelsReturn === 'paused' && i === levelIdx;
+      if (unlocked && (!focusCard || isNext || current) && !pinned) {
+        focusCard = card;
+        pinned = current;
+      }
       grid.appendChild(card);
     }
-    const firstOpen = grid.querySelector('.lvl:not(.locked)');
-    if (firstOpen) firstOpen.focus({ preventScroll: true });
+    return focusCard;
+  }
+
+  function setChapter(ci, keepRailFocus) {
+    chapterSel = (ci + ZT.CHAPTERS.length) % ZT.CHAPTERS.length;
+    const card = renderLevelGrid();
+    const target = keepRailFocus ? $('chRail').children[chapterSel] : card || $('chRail').children[chapterSel];
+    if (target) target.focus({ preventScroll: true });
+  }
+
+  // Yön tuşlarıyla gezinme: o yöndeki en yakın düğmeye geç
+  function moveFocus(dx, dy) {
+    const scr = document.querySelector('.screen.on');
+    if (!scr) return;
+    const items = Array.from(scr.querySelectorAll('button:not(:disabled)'));
+    const cur = document.activeElement;
+    if (!items.includes(cur)) { if (items[0]) items[0].focus({ preventScroll: true }); return; }
+    const r = cur.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let best = null, bestScore = Infinity;
+    for (const el of items) {
+      if (el === cur) continue;
+      const q = el.getBoundingClientRect();
+      const ex = q.left + q.width / 2 - cx, ey = q.top + q.height / 2 - cy;
+      const along = ex * dx + ey * dy;
+      if (along <= 4) continue;
+      const score = along + (Math.abs(ex * dy) + Math.abs(ey * dx)) * 2.5;
+      if (score < bestScore) { bestScore = score; best = el; }
+    }
+    if (best) best.focus({ preventScroll: true });
   }
 
   function setSeg(id, value) {
@@ -2125,7 +2440,8 @@
     if (screen === 'menu') refreshMenu();
     if (screen === 'levels') renderLevelGrid();
     if (screen === 'settings') refreshSettings();
-    if (screen === 'end') $('endSub').textContent = t('end.time', { t: fmtTime(totalBest()), n: save.deaths });
+    if (screen === 'paused') refreshPause();
+    if (screen === 'end') refreshEnd();
   });
 
   // ───────────────────────── Klavye ─────────────────────────
@@ -2147,6 +2463,13 @@
 
     if (screen !== 'playing') {
       if (screen === 'menu' && c === 'Enter' && document.activeElement === document.body) startLevel(firstUnfinished());
+      const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[c];
+      if (arrow) { e.preventDefault(); moveFocus(arrow[0], arrow[1]); }
+      if (screen === 'levels' && (c === 'KeyQ' || c === 'KeyE') && !e.repeat) {
+        ZT.audio.play('ui');
+        setChapter(chapterSel + (c === 'KeyE' ? 1 : -1));
+      }
+      if (screen === 'paused' && c === 'KeyR') { loadLevel(levelIdx, { silent: true }); setScreen('playing'); }
       return;
     }
 

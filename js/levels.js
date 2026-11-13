@@ -561,6 +561,14 @@ window.ZT = window.ZT || {};
   ZT.LEVEL_COUNT = LEVELS.length;
   ZT.LEVEL_KEYS = LEVELS.map((l) => l.key);
 
+  // Perdeler: bölüm seçiminde gruplama ve sahnenin arka plan tonu
+  ZT.CHAPTERS = [
+    { key: 'ch1', from: 0, to: 7, tint: [200, 255, 61] },
+    { key: 'ch2', from: 8, to: 15, tint: [79, 209, 255] },
+    { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] }
+  ];
+  ZT.chapterOf = (idx) => Math.max(0, ZT.CHAPTERS.findIndex((c) => idx >= c.from && idx <= c.to));
+
   ZT.buildLevel = function (idx) {
     const def = LEVELS[idx];
     const b = builder();

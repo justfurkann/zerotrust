@@ -166,6 +166,7 @@ window.ZT = window.ZT || {};
 
   ZT.audio = {
     muted: false,
+    quiet: false,   // menüdeki demo oynarken ses çıkmasın
     unlock() {
       ensure();
       if (musicOn) startMusic();
@@ -185,7 +186,7 @@ window.ZT = window.ZT || {};
       musicBus.gain.setTargetAtTime(0.9, t + 0.25, 0.3);
     },
     play(kind) {
-      if (this.muted) return;
+      if (this.muted || this.quiet) return;
       try {
         if (!ensure()) return;
         switch (kind) {
