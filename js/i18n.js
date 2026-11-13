@@ -117,6 +117,46 @@ window.ZT = window.ZT || {};
       'l14.hint': 'Gölgen bir saniye arkanda. Bir saniyeden uzun durma, geri dönme. Bloğa çok kısa bir an yavaşla.',
       'l14.s1': 'Yalnız değilsin.',
 
+      'l15.title': 'Hata',
+      'l15.hint': 'Pencere bir platform. Üstüne çık ama sağ üstteki ×\'e değme; ondan önce atla.',
+      'l15.s1': 'Sunucularımız çok sağlam.',
+
+      'l16.title': 'Takla',
+      'l16.hint': 'Mavi alanda zıplarsan yerçekimi döner. Tavanda yürü, ikinci alanda tekrar zıpla.',
+      'l16.s1': 'Aşağısı dikenli. Ya yukarısı?',
+
+      'l17.title': 'Tavan Arası',
+      'l17.hint': 'Tavanda da tuzak var. Dikenleri aşağı doğru zıplayarak geç, sahte tavanın üstünden atla.',
+      'l17.s1': 'Yukarısı güvenli. Ters ama güvenli.',
+
+      'l18.title': 'Sahte Kapı',
+      'l18.hint': 'Sağdaki kapı seni yer. Başladığın yerin solundaki duvara yürü.',
+      'l18.s1': 'Çıkış sağda. Her zamanki gibi.',
+
+      'l19.title': 'İntikam',
+      'l19.hint': 'Öldüğün yerler tuzağa dönüşür. Her denemede başka bir yol dene ya da üstlerinden atla.',
+      'l19.s1': 'Hatalarından ders al.',
+
+      'l20.title': 'Kaçak',
+      'l20.hint': 'Platformlar kaçıyor, gölgen arkanda. Hiçbir platformda bir saniyeden uzun durma; ikincisi sana gelir.',
+      'l20.s1': 'Acele et ama dikkatli ol.',
+
+      'l21.title': 'Ağır Abi',
+      'l21.hint': 'Küpler tam zıplamanın tepesinde. Tuşa kısa bas, alçak zıpla, küplerin altından geç.',
+      'l21.s1': 'Güç küpleri bedava!',
+
+      'l22.title': 'Telaş',
+      'l22.hint': 'Anahtarı al ve hiç durmadan kapıya koş. Durursan tavan iner, yavaşlarsan anahtar yetişir.',
+      'l22.s1': 'Kapı kilitli. Acele etme.',
+
+      'l23.title': 'Tersyüz',
+      'l23.hint': 'Anahtar tavanda. Mavi alanda yukarı dön, anahtarı al, aynı alanda aşağı dön, kapıya koş.',
+      'l23.s1': 'Anahtar yukarıda.',
+
+      'l24.title': 'Sıfır Güven',
+      'l24.hint': 'Pencereden ×\'e değmeden atla. Sağdaki kapı sahte; alçak sütunun içine yürü. Gölgen arkanda.',
+      'l24.s1': 'Son kez: hiçbir şeye güvenme.',
+
       'ev.invert': 'Bir şey değişti...',
       'ev.fakeWin': 'Bölüm tamamlandı!',
       'ev.joke': 'Şaka. Kapı başa döndü.',
@@ -136,6 +176,18 @@ window.ZT = window.ZT || {};
       'die.boomerang': 'Diken geri döndü.',
       'die.clone': 'Kendi gölgene çarptın.',
       'die.hud': 'Bölüm başlığı kafana düştü.',
+      'die.decoy': 'Kapı seni yedi.',
+      'die.revenge': 'Eski ölümün seni buldu.',
+
+      'ev.flip': 'Yerçekimi: ters.',
+      'ev.secret': 'Duvar da mı yalancıymış?',
+      'ev.revenge': 'Öldüğün yerler artık birer tuzak.',
+      'zone.flip': 'ZIPLA',
+      'win.title': 'Zero Trust — Hata',
+      'win.msg': 'Bağlantı kesildi.',
+      'win.sub': 'Sunucuya ulaşılamıyor. (0xZ3R0)',
+      'win.retry': 'Tekrar dene',
+      'win.ok': 'Tamam',
 
       'ev.key': 'Anahtar senin. Kapı açıldı.',
       'ev.keyTurn': 'Anahtarın dişleri var!',
@@ -285,6 +337,46 @@ window.ZT = window.ZT || {};
       'l14.hint': 'Your shadow is one second behind you. Never stop longer than a second, never turn back. Slow down only briefly for the block.',
       'l14.s1': 'You are not alone.',
 
+      'l15.title': 'Error',
+      'l15.hint': 'The window is a platform. Climb on it, but don\'t touch the × in the top right; jump before it.',
+      'l15.s1': 'Our servers are rock solid.',
+
+      'l16.title': 'Flip',
+      'l16.hint': 'Jump inside the blue zone to flip gravity. Walk on the ceiling, then jump again in the second zone.',
+      'l16.s1': 'Spikes below. What about above?',
+
+      'l17.title': 'Upside Down',
+      'l17.hint': 'The ceiling has traps too. Jump downward over the spikes and skip the fake ceiling.',
+      'l17.s1': 'It\'s safe up there. Upside down, but safe.',
+
+      'l18.title': 'Decoy',
+      'l18.hint': 'The door on the right eats you. Walk into the wall to the left of where you start.',
+      'l18.s1': 'The exit is on the right. As always.',
+
+      'l19.title': 'Revenge',
+      'l19.hint': 'Places where you died turn into traps. Take a different route each time, or jump over them.',
+      'l19.s1': 'Learn from your mistakes.',
+
+      'l20.title': 'Runaway',
+      'l20.hint': 'Platforms flee, your shadow follows. Never stay on a platform longer than a second; the second one comes at you.',
+      'l20.s1': 'Hurry, but be careful.',
+
+      'l21.title': 'Heavyweight',
+      'l21.hint': 'The cubes sit at the top of a full jump. Tap for a low hop and pass under them.',
+      'l21.s1': 'Free power cubes!',
+
+      'l22.title': 'Rush',
+      'l22.hint': 'Grab the key and run for the door without stopping. Stop and the ceiling falls; slow down and the key catches you.',
+      'l22.s1': 'The door is locked. No rush.',
+
+      'l23.title': 'Inside Out',
+      'l23.hint': 'The key is on the ceiling. Flip up in the blue zone, grab it, flip back down in the same zone, run for the door.',
+      'l23.s1': 'The key is up there.',
+
+      'l24.title': 'Zero Trust',
+      'l24.hint': 'Jump off the window before the ×. The door on the right is fake; walk into the low pillar. Your shadow is behind you.',
+      'l24.s1': 'One last time: trust nothing.',
+
       'ev.invert': 'Something changed...',
       'ev.fakeWin': 'Level complete!',
       'ev.joke': 'Just kidding. The door went back to the start.',
@@ -304,6 +396,18 @@ window.ZT = window.ZT || {};
       'die.boomerang': 'The spike came back.',
       'die.clone': 'You ran into your own shadow.',
       'die.hud': 'The level title fell on your head.',
+      'die.decoy': 'The door ate you.',
+      'die.revenge': 'Your old death found you.',
+
+      'ev.flip': 'Gravity: flipped.',
+      'ev.secret': 'Even the wall was lying?',
+      'ev.revenge': 'Where you died is now a trap.',
+      'zone.flip': 'JUMP',
+      'win.title': 'Zero Trust — Error',
+      'win.msg': 'Connection lost.',
+      'win.sub': 'Server unreachable. (0xZ3R0)',
+      'win.retry': 'Retry',
+      'win.ok': 'OK',
 
       'ev.key': 'Got the key. The door is open.',
       'ev.keyTurn': 'The key has teeth!',

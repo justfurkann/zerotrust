@@ -436,10 +436,10 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .level-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: calc(var(--u) * 1.6);
-  padding: calc(var(--u) * 1) calc(var(--u) * 5) calc(var(--u) * 5);
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 1) calc(var(--u) * 5) calc(var(--u) * 4);
 }
 
 .lvl {
@@ -448,7 +448,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  padding: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1.5);
   background: rgba(16, 16, 20, 0.85);
   border: 1px solid var(--line);
   text-align: left;
@@ -476,7 +476,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
 .lvl-num {
   font-family: var(--display);
   font-weight: 700;
-  font-size: calc(var(--u) * 6);
+  font-size: calc(var(--u) * 4.6);
   line-height: 0.9;
   letter-spacing: -0.05em;
   color: transparent;
@@ -490,7 +490,7 @@ canvas.shake { animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both; }
   margin-top: auto;
   font-family: var(--display);
   font-weight: 700;
-  font-size: calc(var(--u) * 2);
+  font-size: calc(var(--u) * 1.65);
   letter-spacing: -0.01em;
   line-height: 1.1;
 }

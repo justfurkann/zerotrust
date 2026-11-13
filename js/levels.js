@@ -12,10 +12,13 @@
  *   x  görünmez tavan dikeni (çarpınca belirir)
  *   S  yay
  *   w  zayıf zemin (sadece devken kırılır)
+ *   c  çatlak duvar (sağlam görünür, içinden geçilir; gizli geçit)
  *
  * Tuzaklar (ents) oyuncunun merkezinin bir alana girmesiyle tetiklenir.
  * Diğer nesneler: key (anahtar), shy (ürkek platform), ceil (sabırsız tavan),
- * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge).
+ * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge),
+ * window (sahte hata penceresi), gflip (zıplayınca yerçekimi dönen alan),
+ * decoy (sahte kapı), revenge (önceki ölüm noktaları tuzağa döner).
  * trig: [x, w] → x..x+w sütun aralığı (tüm yükseklik)
  *       [x, y, w, h] → dikdörtgen (kare cinsinden)
  */
@@ -333,6 +336,220 @@ window.ZT = window.ZT || {};
             { t: 'pop', x: 22, y: 13, w: 1, trig: [19, 3] },
             { t: 'drop', x: 28, y: 2, w: 1, h: 1, trig: [24.6, 0.6] },
             { t: 'sign', x: 0, y: 13, k: 'l14.s1' }
+          ]
+        };
+      }
+    },
+
+    // 15 — Hata: çukur atlanamayacak kadar geniş. Yaklaşınca "bağlantı kesildi"
+    // penceresi açılır; pencere bir platformdur. Sağ üstteki ×'e değersen kapanır.
+    {
+      key: 'l15',
+      build(b) {
+        b.fill(0, 14, 10, 4, '#');
+        b.fill(18, 14, 14, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'window', x: 10, y: 12, w: 7, h: 2, trig: [7.5, 2] },
+            { t: 'sign', x: 2, y: 13, k: 'l15.s1' }
+          ]
+        };
+      }
+    },
+
+    // 16 — Takla: zemin baştan sona diken. Mavi alanda zıplarsan yerçekimi döner,
+    // tavanda yürüyüp ikinci alanda geri dönersin.
+    {
+      key: 'l16',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(0, 0, 32, 3, '#');
+        b.fill(9, 13, 15, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'gflip', trig: [5, 0, 3, 18] },
+            { t: 'gflip', trig: [25, 0, 3, 18] },
+            { t: 'sign', x: 0, y: 13, k: 'l16.s1' }
+          ]
+        };
+      }
+    },
+
+    // 17 — Tavan Arası: tavanda da tuzak var. Tavandan biten diken,
+    // sabit diken ve basınca yukarı "düşürdüğü" sahte tavan.
+    {
+      key: 'l17',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(0, 0, 32, 3, '#');
+        b.fill(7, 13, 19, 1, '^');
+        b.fill(18, 3, 1, 1, 'v');
+        b.fill(21, 0, 2, 3, '~');
+        return {
+          spawn: [1, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'gflip', trig: [3, 0, 3, 18] },
+            { t: 'pop', x: 13, y: 3, w: 1, down: true, trig: [10.5, 1.5] },
+            { t: 'gflip', trig: [26, 0, 3, 18] },
+            { t: 'sign', x: 6, y: 13, k: 'l17.s1' }
+          ]
+        };
+      }
+    },
+
+    // 18 — Sahte Kapı: sağdaki kapı seni yer. Gerçek çıkış, başlangıcın
+    // solundaki duvarın içinde; duvarda ince çatlaklar var.
+    {
+      key: 'l18',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(0, 0, 3, 9, '#');
+        b.fill(0, 9, 3, 5, 'c');
+        return {
+          spawn: [5, 13],
+          door: { x: 1, y: 13 },
+          ents: [
+            { t: 'decoy', x: 28, y: 13 },
+            { t: 'pop', x: 15, y: 13, w: 1, trig: [12, 2] },
+            { t: 'sign', x: 6, y: 13, k: 'l18.s1' }
+          ]
+        };
+      }
+    },
+
+    // 19 — İntikam: öldüğün noktalar sonraki denemede dikenli topa dönüşür.
+    // Alt ve üst olmak üzere iki yol var; ölümler rotanı değiştirmeye zorlar.
+    {
+      key: 'l19',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(7, 13, 2, 1, '^');
+        b.fill(14, 13, 2, 1, '^');
+        b.fill(21, 13, 2, 1, '^');
+        // Üst yol: her platform bir öncekine tek zıplamayla ulaşılır
+        b.fill(5, 12, 4, 1, '#');
+        b.fill(12, 11, 4, 1, '#');
+        b.fill(19, 11, 4, 1, '#');
+        b.fill(25, 12, 3, 1, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'revenge', max: 4 },
+            { t: 'pop', x: 10, y: 13, w: 1, trig: [7, 2] },
+            { t: 'pop', x: 17, y: 13, w: 1, trig: [14, 2] },
+            { t: 'sign', x: 2, y: 13, k: 'l19.s1' }
+          ]
+        };
+      }
+    },
+
+    // 20 — Kaçak: ürkek platformlar + gölge. Platformda bir saniyeden uzun
+    // bekleyemezsin; ikincisi sana doğru gelir.
+    {
+      key: 'l20',
+      build(b) {
+        b.fill(0, 14, 6, 4, '#');
+        b.fill(25, 14, 7, 4, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'clone', start: 60, delay: 60 },
+            { t: 'shy', x: 9, y: 14, w: 2, dx: 80, trig: [3, 3.6] },
+            { t: 'shy', x: 15, y: 14, w: 2, dx: -80, trig: [9.5, 3.5] },
+            { t: 'shy', x: 19, y: 14, w: 2, dx: 60, trig: [13, 3.5] },
+            { t: 'sign', x: 0, y: 13, k: 'l20.s1' }
+          ]
+        };
+      }
+    },
+
+    // 21 — Ağır Abi: tahta köprü boşluğun üstünde. Boşlukların üstünde tam
+    // zıplamanın tepesine denk gelen küpler var; alçak zıplayan altından geçer.
+    {
+      key: 'l21',
+      build(b) {
+        b.fill(0, 14, 4, 4, '#');
+        b.fill(4, 14, 24, 1, 'w');
+        b.clear(9, 14, 2, 1);
+        b.clear(16, 14, 2, 1);
+        b.clear(23, 14, 2, 1);
+        b.fill(28, 14, 4, 4, '#');
+        return {
+          spawn: [1, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'cube', x: 9.5, y: 10.5 },
+            { t: 'cube', x: 16.5, y: 10.5 },
+            { t: 'cube', x: 23.5, y: 10.5 },
+            { t: 'sign', x: 0, y: 13, k: 'l21.s1' }
+          ]
+        };
+      }
+    },
+
+    // 22 — Telaş: kilitli kapı, kovalayan anahtar ve yerinde durunca inen tavan.
+    // Anahtarı alıp geri dönerken bir an bile duramazsın.
+    {
+      key: 'l22',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(10, 13, 1, 1, '^');
+        b.fill(19, 13, 1, 1, '^');
+        return {
+          spawn: [5, 13],
+          door: { x: 2, y: 13, locked: true },
+          ents: [
+            { t: 'ceil', bottom: 5, warn: 70, slam: 105, start: 30 },
+            { t: 'key', x: 28, y: 13, hostile: true, delay: 30, speed: 5.2 },
+            { t: 'sign', x: 6, y: 13, k: 'l22.s1' }
+          ]
+        };
+      }
+    },
+
+    // 23 — Tersyüz: anahtar tavanda, zemin dikenli. Yukarı dön, anahtarı al,
+    // kovalanırken aynı alanda aşağı dön ve kapıya koş.
+    {
+      key: 'l23',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(0, 0, 32, 3, '#');
+        b.fill(12, 13, 13, 1, '^');
+        return {
+          spawn: [5, 13],
+          door: { x: 2, y: 13, locked: true },
+          ents: [
+            { t: 'gflip', trig: [8, 0, 3, 18] },
+            { t: 'key', x: 27, y: 3, hostile: true, delay: 30, speed: 5 },
+            { t: 'sign', x: 3, y: 13, k: 'l23.s1' }
+          ]
+        };
+      }
+    },
+
+    // 24 — Sıfır Güven: hata penceresi köprüsü, sahte kapı, alçak sütunun içindeki
+    // gerçek çıkış ve arkandaki gölge. Her şeyi biliyorsun; yine de güvenme.
+    {
+      key: 'l24',
+      build(b) {
+        b.fill(0, 14, 8, 4, '#');
+        b.fill(15, 14, 17, 4, '#');
+        b.fill(21, 12, 3, 2, 'c');
+        return {
+          spawn: [2, 13],
+          door: { x: 22, y: 13 },
+          ents: [
+            { t: 'clone', start: 60, delay: 60 },
+            { t: 'window', x: 8, y: 12, w: 6, h: 2, trig: [5.5, 2] },
+            { t: 'decoy', x: 29, y: 13 },
+            { t: 'sign', x: 0, y: 13, k: 'l24.s1' }
           ]
         };
       }
