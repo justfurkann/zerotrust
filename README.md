@@ -2,7 +2,9 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 24 bölüm. Her biri tek ekran ve tek yeni fikir; sonraki bölümler öğrendiğini sana karşı kullanır
+- 30 bölüm, dört perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
+- Perde IV uzun, çok aşamalı bölümlerdir: kamera kayar, kayıt noktaları vardır, düğmeler kapı açar, lazerlerin ritmi, hareketli platformlar ve gidişin bir de dönüşü olur
+- Ana menüde oyun arka planda kendi kendine oynar; bölüm seçiminde her bölümün küçük haritası görünür
 - Prosedürel müzik ve ses efektleri (dosyasız, Web Audio)
 - Bölüm başına en iyi süre ve ölüm sayısı, ölüm izleri, duruma göre alaycı mesajlar
 - Türkçe / English
@@ -18,6 +20,8 @@ Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 | R | Bölümü yeniden başlat |
 | Esc | Duraklat |
 | F | Tam ekran |
+| Yön tuşları | Menülerde gezinme |
+| Q / E | Bölüm seçiminde perde değiştir |
 
 ## Yapı
 
@@ -30,6 +34,7 @@ js/i18n.js      TR / EN metinleri
 js/audio.js     Web Audio ile üretilen sesler
 js/levels.js    bölüm haritaları (32×18 kare ızgara) ve tuzaklar
 js/game.js      fizik, çizim, ekran akışı
+tools/          otomatik oyuncu ve bölüm çözümleri (yalnızca geliştirme için)
 ```
 
 Fizik saniyede sabit 60 adım çalışır, yani oyun hızı monitörün yenileme hızına bağlı değildir.
@@ -50,3 +55,20 @@ Diğer nesneler: `key` (kovalayan anahtar + kilitli kapı), `shy` (zıplayınca 
 `cube` (devleştiren küp), `hud` (düşen bölüm başlığı), `fakeGhost` (radarın sahte izi), `clone` (bir saniye arkandan gelen gölge),
 `window` (platform olan sahte hata penceresi), `gflip` (zıplayınca yerçekimini çeviren alan), `decoy` (sahte kapı),
 `revenge` (önceki ölüm noktaların tuzağa döner).
+
+Perde IV nesneleri: `cp` (kayıt noktası; `fake: true` olanı patlar), `btn` (düğme; `timed` süreli, `hold` basılıyken, `ceil` tavanda),
+`gate` (kapı; `id` ya da `ids` ile düğmelere bağlanır, `latch` açılınca açık kalır, `inv` basınca kapanır),
+`mover` (hareketli platform; `drop` fazla durursan düşer), `laser` (`on` / `off` / `phase` ile ritim).
+Düğme ile bağlı olduğu kapı aynı renkte çizilir. Gölge (`clone`) de düğmelere basabilir.
+Bölüm tanımına `cols: 64` gibi bir genişlik verirsen bölüm ekrandan geniş olur ve kamera oyuncuyu takip eder.
+
+## Bölümleri otomatik denemek
+
+Fizik deterministik olduğu için bölümler kare kare oynatılıp geçilebildiği doğrulanabilir.
+`index.html?zttest` adresi küçük bir test kancası açar; `tools/playtest.js` bunu kullanır (Playwright gerekir):
+
+```bash
+node tools/playtest.js tools/solutions.js
+```
+
+Yeni bir bölüm yazdığında çözümünü `tools/solutions.js` içine ekle; bölüm gerçekten bitirilebiliyor mu, böyle anlaşılır.

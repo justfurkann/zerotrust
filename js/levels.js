@@ -19,6 +19,11 @@
  * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge),
  * window (sahte hata penceresi), gflip (zıplayınca yerçekimi dönen alan),
  * decoy (sahte kapı), revenge (önceki ölüm noktaları tuzağa döner).
+ * Perde IV nesneleri: cp (kayıt noktası; fake: patlar), btn (düğme; timed: süreli,
+ * hold: basılıyken, ceil: tavanda), gate (kapı; id / ids, latch: açılınca kalır,
+ * inv: basınca kapanır), mover (hareketli platform; drop: fazla durursan düşer),
+ * laser (on / off / phase tick cinsinden ritim).
+ * Bölüm tanımında cols verilirse bölüm 32 kareden geniştir ve kamera kayar.
  * trig: [x, w] → x..x+w sütun aralığı (tüm yükseklik)
  *       [x, y, w, h] → dikdörtgen (kare cinsinden)
  */
@@ -30,7 +35,8 @@ window.ZT = window.ZT || {};
   const COLS = 32;
   const ROWS = 18;
 
-  function builder() {
+  function builder(cols) {
+    const COLS = cols;
     const g = Array.from({ length: ROWS }, () => Array(COLS).fill('.'));
     return {
       g,
@@ -553,6 +559,218 @@ window.ZT = window.ZT || {};
           ]
         };
       }
+    },
+    // ───────────── Perde IV: uzun, çok aşamalı bölümler (kamera kayar) ─────────────
+
+    // 25 — Uzun Yol: düğme + kapı, hareketli platform, sahte kayıt noktası, süreli kapı.
+    // "Basma" denen düğmeye basmak şart ama bastığın an önünde diken biter.
+    {
+      key: 'l25',
+      cols: 64,
+      build(b) {
+        b.fill(0, 14, 64, 4, '#');
+        b.fill(20, 0, 1, 10, '#');
+        b.clear(27, 14, 13, 2);
+        b.fill(27, 16, 13, 1, '^');
+        b.fill(35, 14, 2, 1, '=');
+        b.fill(50, 13, 1, 1, '^');
+        b.fill(54, 13, 1, 1, '^');
+        b.fill(58, 0, 1, 10, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 61, y: 13 },
+          ents: [
+            { t: 'sign', x: 3, y: 13, k: 'l25.s1' },
+            { t: 'btn', x: 9, y: 13, id: 1 },
+            { t: 'pop', x: 11, y: 13, w: 2, trig: [9.2, 0.8] },
+            { t: 'gate', x: 20, y: 10, h: 4, id: 1 },
+            { t: 'cp', x: 23, y: 13, id: 1 },
+            { t: 'mover', x: 27, y: 14, w: 3, to: [30, 14], speed: 2.5, wait: 20 },
+            { t: 'sign', x: 39, y: 13, k: 'l25.s2' },
+            { t: 'cp', x: 42, y: 13, fake: true },
+            { t: 'cp', x: 44, y: 13, id: 2 },
+            { t: 'btn', x: 46, y: 13, id: 2, timed: 150 },
+            { t: 'gate', x: 58, y: 10, h: 4, id: 2 }
+          ]
+        };
+      }
+    },
+
+    // 26 — Gidiş Dönüş: kapı başta, anahtar en sonda. Lazerler, uzun bir platform
+    // yolculuğu ve tek kullanımlık köprü. Köprüyü giderken harcarsan dönüşte,
+    // anahtar peşindeyken platformu beklemek zorunda kalırsın.
+    {
+      key: 'l26',
+      cols: 64,
+      build(b) {
+        b.fill(0, 14, 64, 4, '#');
+        b.clear(26, 14, 13, 2);
+        b.fill(26, 16, 13, 1, '^');
+        b.fill(42, 12, 2, 2, '#');
+        b.fill(26, 12, 14, 1, '=');
+        return {
+          spawn: [5, 13],
+          door: { x: 2, y: 13, locked: true },
+          ents: [
+            { t: 'sign', x: 6, y: 13, k: 'l26.s1' },
+            { t: 'laser', x: 12, y: 0, len: 14, dir: 'v', on: 45, off: 75, phase: 0 },
+            { t: 'laser', x: 18, y: 0, len: 14, dir: 'v', on: 45, off: 75, phase: 40 },
+            { t: 'cp', x: 22, y: 13, id: 1 },
+            { t: 'mover', x: 26, y: 14, w: 3, to: [36, 14], speed: 3, wait: 30 },
+            { t: 'laser', x: 32, y: 13, len: 1, dir: 'v', on: 40, off: 80, phase: 20 },
+            { t: 'sign', x: 45, y: 13, k: 'l26.s2' },
+            { t: 'key', x: 60, y: 13, hostile: true, delay: 30, speed: 5.6 }
+          ]
+        };
+      }
+    },
+
+    // 27 — Çift Mesai: kapılar iki düğmeye aynı anda basılınca açılır. İkinci kişi
+    // bir buçuk saniye arkandan gelen gölgen. Onu kullan ama ona dokunma.
+    {
+      key: 'l27',
+      cols: 64,
+      build(b) {
+        b.fill(0, 14, 64, 4, '#');
+        b.fill(21, 0, 1, 10, '#');
+        b.fill(31, 13, 2, 1, '^');
+        b.fill(41, 0, 1, 10, '#');
+        b.fill(55, 0, 1, 10, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 60, y: 13, runs: [[56, 13]], runR: 2 },
+          ents: [
+            { t: 'clone', start: 60, delay: 90 },
+            { t: 'sign', x: 3, y: 13, k: 'l27.s1' },
+            { t: 'btn', x: 10, y: 13, id: 1, hold: true },
+            { t: 'btn', x: 15, y: 13, id: 2, hold: true },
+            { t: 'gate', x: 21, y: 10, h: 4, ids: [1, 2], latch: true },
+            { t: 'cp', x: 24, y: 13, id: 1 },
+            { t: 'btn', x: 28, y: 13, id: 3, hold: true },
+            { t: 'btn', x: 36, y: 13, id: 4, hold: true },
+            { t: 'gate', x: 41, y: 10, h: 4, ids: [3, 4], latch: true },
+            { t: 'cp', x: 44, y: 13, id: 2 },
+            { t: 'sign', x: 45, y: 13, k: 'l27.s2' },
+            { t: 'btn', x: 49, y: 13, id: 5, hold: true },
+            { t: 'gate', x: 55, y: 10, h: 4, id: 5 }
+          ]
+        };
+      }
+    },
+
+    // 28 — Ters Vardiya: süreli düğme tavandaki kapıyı açar; yerçekimini çevirip
+    // süre bitmeden geçmelisin. Tavandaki düğme ise zemindeki kapıyı açar.
+    // İkinci yarıda zemin ve tavan sırayla kapalı, ortadan lazer geçiyor.
+    {
+      key: 'l28',
+      cols: 64,
+      build(b) {
+        b.fill(0, 14, 64, 4, '#');
+        b.fill(0, 0, 64, 3, '#');
+        b.fill(12, 13, 7, 1, '^');
+        b.fill(20, 13, 4, 1, '^');
+        b.fill(30, 3, 3, 1, 'v');
+        b.fill(42, 13, 8, 1, '^');
+        b.fill(54, 3, 2, 1, 'v');
+        return {
+          spawn: [2, 13],
+          door: { x: 60, y: 13 },
+          ents: [
+            { t: 'sign', x: 1, y: 13, k: 'l28.s1' },
+            { t: 'btn', x: 5, y: 13, id: 1, timed: 160 },
+            { t: 'gflip', trig: [8, 0, 3, 18] },
+            { t: 'gate', x: 19, y: 3, h: 11, id: 1 },
+            { t: 'btn', x: 23, y: 3, id: 2, ceil: true },
+            { t: 'gflip', trig: [25, 0, 3, 18] },
+            { t: 'cp', x: 31, y: 13, id: 1 },
+            { t: 'gate', x: 33, y: 3, h: 11, id: 2 },
+            { t: 'btn', x: 37, y: 13, id: 3, timed: 270 },
+            { t: 'gflip', trig: [39, 0, 3, 18] },
+            { t: 'laser', x: 39, y: 8, len: 14, dir: 'h', on: 50, off: 50, phase: 0 },
+            { t: 'gflip', trig: [50, 0, 3, 18] },
+            { t: 'gate', x: 57, y: 3, h: 11, id: 3 }
+          ]
+        };
+      }
+    },
+
+    // 29 — Makine Dairesi: boşluğun üstünde üç platform (yatay, asansör, çapraz ve
+    // fazla beklersen düşen), sonra arkandan çöken köprüde iki lazerin ritmi,
+    // en sonda yaylar ve duvarın üstüne kaçan kapı.
+    {
+      key: 'l29',
+      cols: 80,
+      build(b) {
+        b.fill(0, 14, 8, 4, '#');
+        b.fill(23, 10, 4, 1, '#');
+        b.fill(36, 14, 10, 4, '#');
+        b.fill(46, 14, 14, 1, '=');
+        b.fill(60, 14, 20, 4, '#');
+        b.fill(68, 9, 2, 5, '#');
+        b.fill(65, 13, 1, 1, 'S');
+        b.fill(72, 13, 1, 1, 'S');
+        return {
+          spawn: [2, 13],
+          door: { x: 76, y: 13, runs: [[69, 8]], runR: 2.2 },
+          ents: [
+            { t: 'sign', x: 1, y: 13, k: 'l29.s1' },
+            { t: 'mover', x: 8, y: 14, w: 3, to: [13, 14], speed: 2.5, wait: 10 },
+            { t: 'mover', x: 18, y: 14, w: 3, to: [18, 9], speed: 2, wait: 25 },
+            { t: 'mover', x: 28, y: 10, w: 3, to: [33, 13], speed: 2.5, wait: 30, drop: 75 },
+            { t: 'cp', x: 38, y: 13, id: 1 },
+            { t: 'sign', x: 39, y: 13, k: 'l29.s2' },
+            { t: 'chase', x0: 46, x1: 59, trig: [45.7, 1], delay: 10, interval: 9 },
+            { t: 'laser', x: 50, y: 0, len: 14, dir: 'v', on: 30, off: 60, phase: 0 },
+            { t: 'laser', x: 55, y: 0, len: 14, dir: 'v', on: 30, off: 60, phase: 20 },
+            { t: 'cp', x: 62, y: 13, id: 2 },
+            { t: 'slide', x: 78, y: 13, to: 70, speed: 7, trig: [73, 1] }
+          ]
+        };
+      }
+    },
+
+    // 30 — Son Mesai: hepsi bir arada, gidiş ve dönüş. Kapı başta, anahtar en sonda.
+    // Bu sefer "basma" denen düğmeye gerçekten basılmaz (dönüşte de). Köprü dönüş için.
+    {
+      key: 'l30',
+      cols: 96,
+      build(b) {
+        b.fill(0, 14, 96, 4, '#');
+        b.fill(0, 0, 96, 3, '#');
+        b.fill(15, 3, 1, 7, '#');
+        // Platform çukuru ve üstündeki tek kullanımlık köprü
+        b.clear(20, 14, 9, 2);
+        b.fill(20, 16, 9, 1, '^');
+        b.fill(31, 12, 2, 2, '#');
+        b.fill(20, 12, 9, 1, '=');
+        // Yerçekimi bölümü
+        b.fill(44, 13, 11, 1, '^');
+        b.fill(78, 3, 1, 7, '#');
+        return {
+          spawn: [6, 13],
+          door: { x: 3, y: 13, locked: true },
+          ents: [
+            { t: 'sign', x: 7, y: 13, k: 'l30.s1' },
+            { t: 'btn', x: 11, y: 13, id: 1, timed: 300 },
+            { t: 'gate', x: 15, y: 10, h: 4, id: 1, inv: true },
+            { t: 'mover', x: 20, y: 14, w: 3, to: [26, 14], speed: 3, wait: 25 },
+            { t: 'laser', x: 24, y: 13, len: 1, dir: 'v', on: 35, off: 85, phase: 30 },
+            { t: 'cp', x: 35, y: 13, fake: true },
+            { t: 'cp', x: 38, y: 13, id: 1 },
+            { t: 'gflip', trig: [41, 0, 3, 18] },
+            { t: 'pop', x: 49, y: 3, w: 1, down: true, trig: [46.5, 0, 1.5, 7] },
+            { t: 'gflip', trig: [55, 0, 3, 18] },
+            { t: 'cp', x: 60, y: 13, id: 2 },
+            { t: 'btn', x: 64, y: 13, id: 3, timed: 230 },
+            { t: 'laser', x: 68, y: 3, len: 11, dir: 'v', on: 35, off: 65, phase: 0 },
+            { t: 'laser', x: 73, y: 3, len: 11, dir: 'v', on: 35, off: 65, phase: 50 },
+            { t: 'gate', x: 78, y: 10, h: 4, id: 3 },
+            { t: 'btn', x: 82, y: 13, id: 3, timed: 230 },
+            { t: 'sign', x: 84, y: 13, k: 'l30.s2' },
+            { t: 'key', x: 91, y: 13, hostile: true, delay: 30, speed: 5.4 }
+          ]
+        };
+      }
     }
   ];
 
@@ -565,14 +783,16 @@ window.ZT = window.ZT || {};
   ZT.CHAPTERS = [
     { key: 'ch1', from: 0, to: 7, tint: [200, 255, 61] },
     { key: 'ch2', from: 8, to: 15, tint: [79, 209, 255] },
-    { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] }
+    { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] },
+    { key: 'ch4', from: 24, to: 29, tint: [255, 122, 92] }
   ];
   ZT.chapterOf = (idx) => Math.max(0, ZT.CHAPTERS.findIndex((c) => idx >= c.from && idx <= c.to));
 
   ZT.buildLevel = function (idx) {
     const def = LEVELS[idx];
-    const b = builder();
+    const cols = def.cols || COLS;
+    const b = builder(cols);
     const meta = def.build(b);
-    return { key: def.key, chars: b.g, spawn: meta.spawn, door: meta.door, ents: meta.ents };
+    return { key: def.key, cols, chars: b.g, spawn: meta.spawn, door: meta.door, ents: meta.ents };
   };
 })(window.ZT);
