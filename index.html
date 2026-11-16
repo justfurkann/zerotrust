@@ -36,11 +36,18 @@
         </div>
         <div class="hud-r">
           <span class="tag" id="hudRadar" data-i18n="hud.radar" hidden></span>
-          <span class="hud-time" id="hudTime">0:00.0</span>
-          <span class="hud-deaths"><span data-i18n="hud.deaths"></span><b id="hudDeaths">0</b></span>
+          <div class="hud-stat">
+            <span class="hud-time" id="hudTime">0:00.0</span>
+            <small><span data-i18n="hud.best"></span> <b id="hudBest">–</b></small>
+          </div>
+          <div class="hud-stat deaths">
+            <span class="hud-x"><i></i><b id="hudLDeaths">0</b></span>
+            <small><b id="hudDeaths">0</b> <span data-i18n="hud.total"></span></small>
+          </div>
           <button type="button" class="key-btn" id="hudPause">ESC</button>
         </div>
         <div id="hint"><span class="hint-k" data-i18n="hud.hint"></span><span id="hintText"></span></div>
+        <div class="hud-keys"><kbd>R</kbd><span data-i18n="hud.restart"></span></div>
       </div>
 
       <div id="toast" class="toast" role="status" aria-live="polite">
@@ -51,6 +58,7 @@
       <div id="intro">
         <span id="introNum"></span>
         <span id="introTitle"></span>
+        <span id="introCh"></span>
       </div>
 
       <!-- Ana menü -->
@@ -71,14 +79,30 @@
           <p class="tagline"><span class="caret">›</span> <span data-i18n="tagline"></span></p>
 
           <nav class="menu-nav">
-            <button type="button" class="mi primary" id="btnPlay" data-autofocus><span class="mi-k">01</span><span id="btnPlayLabel"></span></button>
+            <button type="button" class="mi primary" id="btnPlay" data-autofocus><span class="mi-k">01</span><span id="btnPlayLabel"></span><em class="mi-note" id="btnPlayNote"></em></button>
             <button type="button" class="mi" id="btnLevels"><span class="mi-k">02</span><span data-i18n="menu.levels"></span></button>
             <button type="button" class="mi" id="btnSettings"><span class="mi-k">03</span><span data-i18n="menu.settings"></span></button>
           </nav>
         </div>
 
+        <div class="demo-tag"><i></i><span data-i18n="menu.demo"></span></div>
+
         <footer class="bar bottom">
-          <span><span class="dim" data-i18n="menu.deaths"></span> <b id="menuDeaths" class="danger">0</b></span>
+          <div class="stats">
+            <div class="stat wide">
+              <small data-i18n="menu.progress"></small>
+              <span><b id="menuProgress">0</b><em id="menuTotal">/24</em></span>
+              <div class="meter"><i id="menuMeter"></i></div>
+            </div>
+            <div class="stat">
+              <small data-i18n="menu.deaths"></small>
+              <span><b id="menuDeaths" class="danger">0</b></span>
+            </div>
+            <div class="stat">
+              <small data-i18n="menu.time"></small>
+              <span><b id="menuTime">–</b></span>
+            </div>
+          </div>
           <span class="dim" data-i18n="controls.short"></span>
         </footer>
       </section>
@@ -90,7 +114,17 @@
           <h2 data-i18n="levels.title"></h2>
           <span class="bar-spacer"></span>
         </header>
-        <div class="level-grid" id="levelGrid"></div>
+        <div class="lv">
+          <nav class="ch-rail" id="chRail"></nav>
+          <div class="lv-main">
+            <div class="ch-hero" id="chHero">
+              <div class="ch-hero-l"><small id="chHeroName"></small><h3 id="chHeroTitle"></h3><p id="chHeroDesc"></p></div>
+              <div class="ch-hero-r"><b id="chHeroDone">0</b><em id="chHeroTotal">/8</em></div>
+            </div>
+            <div class="level-grid" id="levelGrid"></div>
+            <p class="lv-keys" data-i18n="levels.hintKeys"></p>
+          </div>
+        </div>
       </section>
 
       <!-- Ayarlar -->
@@ -101,52 +135,73 @@
           <span class="bar-spacer"></span>
         </header>
         <div class="settings">
-          <div class="row">
-            <div class="row-l"><span data-i18n="settings.lang"></span></div>
-            <div class="seg" id="setLang"><button type="button" data-v="tr">Türkçe</button><button type="button" data-v="en">English</button></div>
-          </div>
-          <div class="row">
-            <div class="row-l"><span data-i18n="settings.sound"></span></div>
-            <div class="seg" id="setSound"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
-          </div>
-          <div class="row">
-            <div class="row-l"><span data-i18n="settings.music"></span></div>
-            <div class="seg" id="setMusic"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
-          </div>
-          <div class="row">
-            <div class="row-l"><span data-i18n="settings.radar"></span><small data-i18n="settings.radarDesc"></small></div>
-            <div class="seg" id="setRadar"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
-          </div>
-          <div class="row">
-            <div class="row-l"><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreenDesc"></small></div>
-            <div class="seg" id="setFull"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
-          </div>
-          <div class="row">
-            <div class="row-l"><span data-i18n="settings.reset"></span></div>
-            <button type="button" class="btn-danger" id="btnReset"></button>
+          <div class="set-col">
+            <h3 data-i18n="settings.av"></h3>
+            <div class="row">
+              <div class="row-l"><span data-i18n="settings.lang"></span></div>
+              <div class="seg" id="setLang"><button type="button" data-v="tr">Türkçe</button><button type="button" data-v="en">English</button></div>
+            </div>
+            <div class="row">
+              <div class="row-l"><span data-i18n="settings.sound"></span></div>
+              <div class="seg" id="setSound"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
+            </div>
+            <div class="row">
+              <div class="row-l"><span data-i18n="settings.music"></span></div>
+              <div class="seg" id="setMusic"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
+            </div>
+            <div class="row">
+              <div class="row-l"><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreenDesc"></small></div>
+              <div class="seg" id="setFull"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
+            </div>
+
+            <h3 data-i18n="settings.game"></h3>
+            <div class="row">
+              <div class="row-l"><span data-i18n="settings.radar"></span><small data-i18n="settings.radarDesc"></small></div>
+              <div class="seg" id="setRadar"><button type="button" data-v="on" data-i18n="on"></button><button type="button" data-v="off" data-i18n="off"></button></div>
+            </div>
+
+            <h3 data-i18n="settings.data"></h3>
+            <div class="row">
+              <div class="row-l"><span data-i18n="settings.reset"></span><small data-i18n="settings.resetDesc"></small></div>
+              <button type="button" class="btn-danger" id="btnReset"></button>
+            </div>
           </div>
 
-          <h3 data-i18n="settings.controls"></h3>
-          <div class="controls">
-            <div><span class="keys"><kbd>A</kbd><kbd>D</kbd><em>/</em><kbd>←</kbd><kbd>→</kbd></span><span data-i18n="ctl.move"></span></div>
-            <div><span class="keys"><kbd>W</kbd><em>/</em><kbd class="wide">Space</kbd></span><span data-i18n="ctl.jump"></span></div>
-            <div><span class="keys"><kbd>R</kbd></span><span data-i18n="ctl.restart"></span></div>
-            <div><span class="keys"><kbd class="wide">Esc</kbd></span><span data-i18n="ctl.pause"></span></div>
-          </div>
+          <aside class="set-col side">
+            <h3 data-i18n="settings.controls"></h3>
+            <div class="controls">
+              <div><span class="keys"><kbd>A</kbd><kbd>D</kbd><em>/</em><kbd>←</kbd><kbd>→</kbd></span><span data-i18n="ctl.move"></span></div>
+              <div><span class="keys"><kbd>W</kbd><em>/</em><kbd class="wide">Space</kbd></span><span data-i18n="ctl.jump"></span></div>
+              <div><span class="keys"><kbd>R</kbd></span><span data-i18n="ctl.restart"></span></div>
+              <div><span class="keys"><kbd class="wide">Esc</kbd></span><span data-i18n="ctl.pause"></span></div>
+              <div><span class="keys"><kbd>F</kbd></span><span data-i18n="ctl.fullscreen"></span></div>
+            </div>
+          </aside>
         </div>
       </section>
 
       <!-- Duraklatma -->
       <section class="screen" id="scr-pause">
         <div class="card">
-          <h2 data-i18n="pause.title"></h2>
-          <nav class="menu-nav compact">
-            <button type="button" class="mi primary" id="btnResume" data-autofocus><span class="mi-k">↵</span><span data-i18n="pause.resume"></span></button>
-            <button type="button" class="mi" id="btnRestart"><span class="mi-k">R</span><span data-i18n="pause.restart"></span></button>
-            <button type="button" class="mi" id="btnPauseLevels"><span class="mi-k">—</span><span data-i18n="pause.levels"></span></button>
-            <button type="button" class="mi" id="btnPauseSettings"><span class="mi-k">—</span><span data-i18n="pause.settings"></span></button>
-            <button type="button" class="mi" id="btnPauseMenu"><span class="mi-k">—</span><span data-i18n="pause.menu"></span></button>
-          </nav>
+          <div class="card-main">
+            <h2 data-i18n="pause.title"></h2>
+            <nav class="menu-nav compact">
+              <button type="button" class="mi primary" id="btnResume" data-autofocus><span class="mi-k">↵</span><span data-i18n="pause.resume"></span></button>
+              <button type="button" class="mi" id="btnRestart"><span class="mi-k">R</span><span data-i18n="pause.restart"></span></button>
+              <button type="button" class="mi" id="btnPauseLevels"><span class="mi-k">—</span><span data-i18n="pause.levels"></span></button>
+              <button type="button" class="mi" id="btnPauseSettings"><span class="mi-k">—</span><span data-i18n="pause.settings"></span></button>
+              <button type="button" class="mi" id="btnPauseMenu"><span class="mi-k">—</span><span data-i18n="pause.menu"></span></button>
+            </nav>
+          </div>
+          <aside class="card-side">
+            <span class="card-num" id="pauseNum">01</span>
+            <span class="card-title" id="pauseTitle"></span>
+            <dl class="facts">
+              <div><dt data-i18n="stat.time"></dt><dd id="pauseTime">–</dd></div>
+              <div><dt data-i18n="stat.best"></dt><dd id="pauseBest">–</dd></div>
+              <div><dt data-i18n="stat.levelDeaths"></dt><dd id="pauseDeaths" class="danger">0</dd></div>
+            </dl>
+          </aside>
         </div>
       </section>
 
@@ -155,7 +210,12 @@
         <div class="end">
           <span class="kicker" data-i18n="end.kicker"></span>
           <h2 data-i18n="end.title"></h2>
-          <p id="endSub"></p>
+          <dl class="facts row-facts">
+            <div><dt data-i18n="stat.cleared"></dt><dd id="endCleared">–</dd></div>
+            <div><dt data-i18n="menu.time"></dt><dd id="endTime">–</dd></div>
+            <div><dt data-i18n="menu.deaths"></dt><dd id="endDeaths" class="danger">0</dd></div>
+            <div><dt data-i18n="stat.worst"></dt><dd id="endWorst">–</dd></div>
+          </dl>
           <button type="button" class="mi primary" id="btnEndMenu" data-autofocus><span class="mi-k">↵</span><span data-i18n="end.menu"></span></button>
         </div>
       </section>
