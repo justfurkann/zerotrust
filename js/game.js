@@ -295,7 +295,8 @@
         .slice(-e.max)
         .map((g) => ({ x: g.x, y: g.y }));
     }
-    const w = { key: L.key, idx, cols: L.cols, cells, ents, door, spawn: L.spawn, inverted: false, t: 0, exiting: 0, hist: [], armT: -1, secretOpen: false, sx: 0 };
+    const w = { key: L.key, idx, cols: L.cols, cells, ents, door, spawn: L.spawn, inverted: false, t: 0, exiting: 0, hist: [], armT: -1, secretOpen: false, sx: 0,
+      phase: 0, phased: ents.some((e) => e.t === 'phase'), phaseHit: false, phaseT: 0 };
     // Kayıt noktasından dönüş: o ana kadar kalıcı açılmış şeyler açık kalır
     if (checkpoint) {
       for (const e of ents) {
@@ -324,6 +325,8 @@
       case 'w': return c.st < 2;
       case '?': return c.rev;
       case 'K': return true;
+      case 'A': return world.phase === 0;
+      case 'B': return world.phase === 1;
       default: return false;
     }
   }
@@ -598,6 +601,17 @@
     toast(t('ev.shrink'), 'info');
   }
 
+  // Perde VI: her zıplayışta pembe ve mavi bloklar yer değiştirir.
+  // Yeni katılaşan bir bloğun içindeysen ezilirsin.
+  function flipPhase() {
+    world.phase ^= 1;
+    world.phaseT = 10;
+    ZT.audio.play(world.phase ? 'phase1' : 'phase0');
+    forTiles(player.x + 4, player.y + 4, player.w - 8, player.h - 8, (c) => {
+      if ((c.k === 'A' || c.k === 'B') && isSolid(c)) world.phaseHit = true;
+    });
+  }
+
   function updatePlayer() {
     const p = player;
     const maxv = p.big ? BIG_MAXV : MAXV;
@@ -660,6 +674,7 @@
       p.ride = null;
       p.squash = 1.25;
       ZT.audio.play('jump');
+      if (world.phased) flipPhase();
       dust(p.x + p.w / 2, p.y + p.h, 5);
       // Ürkek platformlar: zıpladığın an iniş yerin kaçar
       for (const e of world.ents) {
@@ -1285,6 +1300,7 @@
       }
     }
 
+    if (!cause && world.phaseHit) cause = 'die.phase';
     if (!cause && (player.y > ROWS * T + 20 || player.y < -110)) cause = 'die.void';
     if (cause) killPlayer(cause, sub);
   }
@@ -1368,6 +1384,7 @@
       updateParticles();
       if (screen === 'playing' && tick % 6 === 0) $('hudTime').textContent = fmtTime(levelTicks);
     }
+    if (world && world.phaseT > 0) world.phaseT--;
     if (world && world.cols > COLS) cam += (camTarget() - cam) * 0.14;
     else cam = 0;
     if (transT > 0) transT--;
@@ -1598,6 +1615,39 @@
     ctx.restore();
   }
 
+  // Evre blokları: katıyken dolu, değilken kesik çizgili hayalet
+  const PHASE_COL = { A: '#ff7ab8', B: '#4fd1ff' };
+  function drawPhaseBlock(c, tx, ty) {
+    const x = tx * T, y = ty * T, col = PHASE_COL[c.k];
+    const same = (dx, dy) => cellAt(tx + dx, ty + dy).k === c.k;
+    ctx.save();
+    if (isSolid(c)) {
+      ctx.fillStyle = '#16151b';
+      ctx.fillRect(x, y, T, T);
+      ctx.globalAlpha = 0.16 + (world.phaseT / 10) * 0.3;
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y, T, T);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = col;
+      if (!same(0, -1)) ctx.fillRect(x, y, T, 4);
+      if (!same(0, 1)) ctx.fillRect(x, y + T - 2, T, 2);
+      if (!same(-1, 0)) ctx.fillRect(x, y, 2, T);
+      if (!same(1, 0)) ctx.fillRect(x + T - 2, y, 2, T);
+      ctx.fillRect(x + T / 2 - 4, y + T / 2 - 4, 8, 8);
+    } else {
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.strokeRect(x + 4, y + 4, T - 8, T - 8);
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = col;
+      ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
+    }
+    ctx.restore();
+  }
+
   function spikeShape(x, baseY, w, h, down) {
     const n = Math.max(1, Math.round(w / 22));
     const sw = w / n;
@@ -1692,6 +1742,10 @@
             break;
           case 'K':
             drawStone(tx, ty);
+            break;
+          case 'A':
+          case 'B':
+            drawPhaseBlock(c, tx, ty);
             break;
           case 'c':
             ctx.save();
@@ -2624,6 +2678,11 @@
         } else if (k === '=' || k === 'f') {
           g.fillStyle = '#7b7984';
           g.fillRect(px + 1, py, u - 2, 2);
+        } else if (k === 'A' || k === 'B') {
+          g.fillStyle = PHASE_COL[k];
+          g.globalAlpha = k === 'A' ? 0.85 : 0.35;
+          g.fillRect(px, py, u, u);
+          g.globalAlpha = 1;
         } else if (k === 'w') {
           g.fillStyle = '#b9a58a';
           g.fillRect(px, py, u, 2);
