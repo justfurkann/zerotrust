@@ -19,6 +19,7 @@
  * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge),
  * window (sahte hata penceresi), gflip (zıplayınca yerçekimi dönen alan),
  * decoy (sahte kapı), revenge (önceki ölüm noktaları tuzağa döner).
+ * Perde V: stone (son ölümlerin taşa döner; max: kaç tane), cube kind: 'shrink' (küçültür).
  * Perde IV nesneleri: cp (kayıt noktası; fake: patlar), btn (düğme; timed: süreli,
  * hold: basılıyken, ceil: tavanda), gate (kapı; id / ids, latch: açılınca kalır,
  * inv: basınca kapanır), mover (hareketli platform; drop: fazla durursan düşer),
@@ -771,6 +772,152 @@ window.ZT = window.ZT || {};
           ]
         };
       }
+    },
+
+    // ───────────── Perde V: ölüm bir kaynak (son 3 ölümün taşa döner) ─────────────
+
+    // 31 — Basamak: diken şeridi atlanamayacak kadar uzun. Dikene bilerek düş;
+    // öldüğün yer taşa döner ve bir sonraki denemede basamak olur.
+    {
+      key: 'l31',
+      build(b) {
+        b.fill(0, 14, 32, 4, '#');
+        b.fill(8, 13, 15, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 29, y: 13 },
+          ents: [
+            { t: 'stone', max: 3 },
+            { t: 'sign', x: 1, y: 13, k: 'l31.s1' }
+          ]
+        };
+      }
+    },
+
+    // 32 — Feda: kapı sadece düğme basılıyken açık ve düğme kapıdan çok uzakta.
+    // Lazer düğmenin tam üstünden geçiyor: orada taşa dönersen düğmeyi sonsuza dek
+    // sen basılı tutarsın. Sonra iki taşlık bir köprü daha. Toplam: tam 3 taş.
+    {
+      key: 'l32',
+      cols: 48,
+      build(b) {
+        b.fill(0, 14, 48, 4, '#');
+        b.fill(24, 0, 1, 10, '#');
+        b.fill(29, 13, 9, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 44, y: 13 },
+          ents: [
+            { t: 'stone', max: 3 },
+            { t: 'sign', x: 3, y: 13, k: 'l32.s1' },
+            { t: 'btn', x: 12, y: 13, id: 1, hold: true },
+            { t: 'laser', x: 12, y: 0, len: 14, dir: 'v', on: 40, off: 80, phase: 0 },
+            { t: 'gate', x: 24, y: 10, h: 4, id: 1 },
+            { t: 'cp', x: 26, y: 13, id: 1 }
+          ]
+        };
+      }
+    },
+
+    // 33 — İki Gölge: kapı üç düğmeye aynı anda basılınca açılır. Biri sen,
+    // ikisi 1 ve 2 saniye arkandan gelen gölgelerin. Her düğmede bir saniyeden az bekle.
+    {
+      key: 'l33',
+      cols: 40,
+      build(b) {
+        b.fill(0, 14, 40, 4, '#');
+        b.fill(20, 0, 1, 10, '#');
+        b.fill(27, 13, 1, 1, '^');
+        b.fill(31, 13, 1, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 37, y: 13 },
+          ents: [
+            { t: 'clone', start: 60, delay: 60 },
+            { t: 'clone', start: 60, delay: 120 },
+            { t: 'sign', x: 1, y: 13, k: 'l33.s1' },
+            { t: 'btn', x: 8, y: 13, id: 1, hold: true },
+            { t: 'btn', x: 10, y: 13, id: 2, hold: true },
+            { t: 'btn', x: 12, y: 13, id: 3, hold: true },
+            { t: 'gate', x: 20, y: 10, h: 4, ids: [1, 2, 3], latch: true }
+          ]
+        };
+      }
+    },
+
+    // 34 — Ağırlık Merkezi: tüneli küçükken geç, duvarı büyükken yık,
+    // tahta köprüden önce yeniden küçül. Sıra yanlışsa çözüm yok.
+    {
+      key: 'l34',
+      cols: 48,
+      build(b) {
+        b.fill(0, 14, 48, 4, '#');
+        b.fill(10, 0, 8, 13, '#');
+        b.fill(26, 0, 1, 9, '#');
+        b.fill(26, 9, 1, 5, 'w');
+        b.clear(31, 14, 6, 4);
+        b.fill(31, 14, 6, 1, 'w');
+        return {
+          spawn: [2, 13],
+          door: { x: 44, y: 13 },
+          ents: [
+            { t: 'sign', x: 1, y: 13, k: 'l34.s1' },
+            { t: 'cube', x: 8, y: 13 },
+            { t: 'cube', x: 21, y: 10.5 },
+            { t: 'cube', x: 29, y: 9.5, kind: 'shrink' }
+          ]
+        };
+      }
+    },
+
+    // 35 — Köprü Kur: kapı başta ve kilitli, anahtar dikenlerin ötesinde.
+    // Giderken kendi taşlarından köprü kur; dönüşte anahtar peşindeyken o köprüden geç.
+    {
+      key: 'l35',
+      cols: 40,
+      build(b) {
+        b.fill(0, 14, 40, 4, '#');
+        b.fill(9, 13, 15, 1, '^');
+        return {
+          spawn: [5, 13],
+          door: { x: 2, y: 13, locked: true },
+          ents: [
+            { t: 'stone', max: 3 },
+            { t: 'sign', x: 3, y: 13, k: 'l35.s1' },
+            { t: 'key', x: 33, y: 13, hostile: true, delay: 30, speed: 5 }
+          ]
+        };
+      }
+    },
+
+    // 36 — Sıfır Saat: gölgenle iki düğme, taşlarla köprü, ve son kapı için
+    // düğmenin üstünde taşa dönmen gerek. Bu sefer seni orada gölgen öldürür.
+    {
+      key: 'l36',
+      cols: 56,
+      build(b) {
+        b.fill(0, 14, 56, 4, '#');
+        b.fill(16, 0, 1, 10, '#');
+        b.fill(20, 13, 9, 1, '^');
+        b.fill(44, 0, 1, 10, '#');
+        return {
+          spawn: [2, 13],
+          door: { x: 52, y: 13 },
+          ents: [
+            { t: 'stone', max: 3 },
+            { t: 'clone', start: 60, delay: 60 },
+            { t: 'sign', x: 1, y: 13, k: 'l36.s1' },
+            { t: 'btn', x: 8, y: 13, id: 1, hold: true },
+            { t: 'btn', x: 12, y: 13, id: 2, hold: true },
+            { t: 'gate', x: 16, y: 10, h: 4, ids: [1, 2], latch: true },
+            { t: 'cp', x: 18, y: 13, id: 1 },
+            { t: 'cp', x: 33, y: 13, id: 2 },
+            { t: 'btn', x: 37, y: 13, id: 3, hold: true },
+            { t: 'gate', x: 44, y: 10, h: 4, id: 3 },
+            { t: 'sign', x: 34, y: 13, k: 'l36.s2' }
+          ]
+        };
+      }
     }
   ];
 
@@ -784,7 +931,8 @@ window.ZT = window.ZT || {};
     { key: 'ch1', from: 0, to: 7, tint: [200, 255, 61] },
     { key: 'ch2', from: 8, to: 15, tint: [79, 209, 255] },
     { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] },
-    { key: 'ch4', from: 24, to: 29, tint: [255, 122, 92] }
+    { key: 'ch4', from: 24, to: 29, tint: [255, 122, 92] },
+    { key: 'ch5', from: 30, to: 35, tint: [255, 204, 77] }
   ];
   ZT.chapterOf = (idx) => Math.max(0, ZT.CHAPTERS.findIndex((c) => idx >= c.from && idx <= c.to));
 

@@ -225,6 +225,13 @@ window.ZT = window.ZT || {};
             tone('sine', [[440, 0], [220, 0.5, true]], 0.6, 0.06);
             tone('sine', [[466, 0], [233, 0.5, true]], 0.6, 0.05);
             break;
+          case 'shrink':
+            tone('sine', [[640, 0], [180, 0.25, true]], 0.3, 0.07);
+            break;
+          case 'stone':
+            noise(0.3, 0.12, 600);
+            tone('triangle', [[110, 0], [70, 0.3, true]], 0.35, 0.1);
+            break;
           case 'grow':
             tone('square', [[160, 0], [80, 0.3, true]], 0.4, 0.08);
             tone('sine', [[320, 0], [640, 0.2, true]], 0.25, 0.05);

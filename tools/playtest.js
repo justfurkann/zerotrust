@@ -6,6 +6,7 @@
 //   G              yere inene kadar bekle            RG / LG     yön tuşuyla yere inene kadar
 //   T n            dünya saati n olana kadar bekle   T% [m, a]   saat mod m == a olana kadar
 //   CEIL           tavana inene kadar (ters yerçekimi)
+//   D / RD / LD / RJD n   (taş bölümleri) bilerek öl: verilen tuşlarla ölene kadar devam et, sonra yeniden doğmayı bekle
 const { chromium } = require('playwright');
 const path = require('path');
 const programs = require(path.resolve(process.argv[2]));
@@ -38,6 +39,21 @@ const only = process.argv.slice(3).map(Number);
         const l = op[0] === 'L', r = op[0] === 'R', j = op.includes('J');
         let out = null, n = 0;
         const loop = (cond, max, ll, rr, jj) => { while (!cond() && n++ < (max || 900)) { out = tick(ll, rr, jj); if (out) break; } };
+        if (op === 'D' || op === 'RD' || op === 'LD' || op === 'RJD' || op === 'LJD') {
+          // Beklenen ölüm: ölene kadar tuşları tut, sonra yeniden doğmayı bekle
+          let died = false;
+          while (n++ < (arg || 600)) {
+            D.tick(l, r, j);
+            const s2 = st();
+            if (s2.deaths > deaths) { deaths = s2.deaths; died = true; log.push('  ✝ (planned) ' + s2.lastDeath + ' at x=' + s2.x.toFixed(2)); break; }
+            if (done()) return { ok: true, log };
+          }
+          if (!died) return { ok: false, log, why: 'expected death at step ' + i + ' did not happen' };
+          let k = 0;
+          while (st().dead && k++ < 200) D.tick(false, false, false);
+          snap(i + ' ' + op);
+          continue;
+        }
         if (op === 'G' || op === 'RG' || op === 'LG') loop(() => st().ground, 400, l, r, false);
         else if (op === 'T') loop(() => st().t >= arg, 2000, false, false, false);
         else if (op === 'T%') loop(() => st().t % arg[0] === arg[1], 2000, false, false, false);

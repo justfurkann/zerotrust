@@ -221,6 +221,7 @@
         case 'shy': e.px = e.x * T; e.py = e.y * T; e.pw = e.w * T; e.ph = 24; e.tx = e.px; break;
         case 'ceil': e.by = e.bottom * T; e.best = -1; e.idle = 0; e.state = 0; break;
         case 'cube': e.taken = false; break;
+        case 'stone': break;
         case 'hud': e.px = 30; e.py = 26; e.pw = 0; e.ph = 34; e.vy = 0; e.state = 0; break;
         case 'clone': e.on = false; break;
         case 'window': e.px = e.x * T; e.py = e.y * T; e.pw = e.w * T; e.ph = e.h * T; e.state = 0; e.anim = 0; break;
@@ -237,6 +238,25 @@
       }
       return e;
     });
+    // Taşlaşma: son ölümlerin, öldüğün karede taşa döner (en fazla e.max tane)
+    const stoneEnt = ents.find((e) => e.t === 'stone');
+    if (stoneEnt) {
+      const cols = cells[0].length;
+      const rx = checkpoint ? checkpoint.x : L.spawn[0], ry = checkpoint ? checkpoint.y : L.spawn[1];
+      const placed = [];
+      for (let i = ghosts.length - 1; i >= 0 && placed.length < stoneEnt.max; i--) {
+        const tx = Math.floor(ghosts[i].x / T), ty = Math.floor(ghosts[i].y / T);
+        if (tx < 0 || tx >= cols || ty < 0 || ty >= ROWS) continue;
+        if (Math.abs(tx - rx) <= 1 && Math.abs(ty - ry) <= 1) continue;          // doğduğun yere değil
+        if (tx === L.door.x && (ty === L.door.y || ty === L.door.y - 1)) continue; // kapıya değil
+        const c = cells[ty][tx];
+        if (c.k === '#' || c.k === 'K') continue;
+        Object.assign(c, { k: 'K', st: 0, t: 0, oy: 0, vy: 0, mask: false });
+        placed.push([tx, ty]);
+      }
+      stoneEnt.count = placed.length;
+    }
+
     // Tuzak tetiklenene kadar altındaki çukur dolu zemin gibi görünsün
     const maskBelow = (x, y) => {
       const list = [];
@@ -303,6 +323,7 @@
       case '=': return c.st < 2;
       case 'w': return c.st < 2;
       case '?': return c.rev;
+      case 'K': return true;
       default: return false;
     }
   }
@@ -465,6 +486,11 @@
     if (!o.silent) showIntro();
   }
 
+  // Yeniden başlatınca taşlar da silinir (yanlış yere taş bıraktıysan çıkış yolu)
+  function clearStones() {
+    if (world && world.ents.some((e) => e.t === 'stone')) ghosts = [];
+  }
+
   let lastDeath = null;
   function killPlayer(reasonKey, forcedSub) {
     if (player.dead) return;
@@ -556,6 +582,20 @@
     shakeAmt = 10;
     ZT.audio.play('grow');
     toast(t('ev.cube'), 'trap');
+  }
+
+  function makeSmall() {
+    const p = player;
+    if (!p.big) return;
+    const cx = p.x + p.w / 2, bottom = p.y + p.h;
+    p.big = false;
+    p.w = PW;
+    p.h = PH;
+    p.x = cx - PW / 2;
+    p.y = bottom - PH;
+    p.squash = 0.7;
+    ZT.audio.play('shrink');
+    toast(t('ev.shrink'), 'info');
   }
 
   function updatePlayer() {
@@ -747,8 +787,9 @@
       const cy = (e.y + 0.5) * T + Math.sin(world.t * 0.08) * 4;
       if (overlap({ x: (e.x + 0.5) * T - 15, y: cy - 15, w: 30, h: 30 }, { x: p.x, y: p.y, w: p.w, h: p.h })) {
         e.taken = true;
-        spawnParticles((e.x + 0.5) * T, cy, C.accent, 24, 12);
-        makeBig();
+        spawnParticles((e.x + 0.5) * T, cy, e.kind === 'shrink' ? C.purple : C.accent, 24, 12);
+        if (e.kind === 'shrink') makeSmall();
+        else makeBig();
       }
     }
   }
@@ -989,6 +1030,8 @@
         case 'btn': {
           const zone = { x: e.x * T + 6, y: e.ceil ? e.y * T : (e.y + 1) * T - 16, w: T - 12, h: 16 };
           let down = !player.dead && overlap(zone, { x: player.x, y: player.y, w: player.w, h: player.h });
+          // Düğmenin üstündeki taş onu sonsuza dek basılı tutar
+          if (world.cells[e.y] && world.cells[e.y][e.x] && world.cells[e.y][e.x].k === 'K') down = true;
           // Gölgen de düğmeye basabilir
           for (const c of world.ents) {
             if (c.t !== 'clone') continue;
@@ -1264,6 +1307,7 @@
         for (const e of world.ents) {
           if (e.t === 'hud') e.pw = measureHudTitle();
           if (e.t === 'revenge' && e.pts.length && !revengeTold) { revengeTold = true; toast(t('ev.revenge'), 'trap'); }
+          if (e.t === 'stone' && e.count && !revengeTold) { revengeTold = true; toast(t('ev.stone'), 'win'); }
         }
         resetPlayer();
       }
@@ -1523,6 +1567,37 @@
     ctx.restore();
   }
 
+  // Taşa dönmüş eski sen: gri blok, içinde donmuş karakter, X gözler
+  function drawStone(tx, ty) {
+    const x = tx * T, y = ty * T;
+    ctx.save();
+    ctx.fillStyle = '#2b2a31';
+    ctx.fillRect(x, y, T, T);
+    ctx.fillStyle = '#4a4852';
+    ctx.fillRect(x, y, T, 4);
+    ctx.strokeStyle = '#1b1a20';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, T - 2, T - 2);
+    // Donmuş karakter silueti
+    ctx.fillStyle = '#3d3b45';
+    ctx.fillRect(x + 10, y + 8, 40, 46);
+    ctx.strokeStyle = 'rgba(200,255,61,0.35)';
+    ctx.lineWidth = 2.5;
+    [[x + 21, y + 22], [x + 37, y + 22]].forEach(([ex, ey]) => {
+      ctx.beginPath();
+      ctx.moveTo(ex - 4, ey - 4); ctx.lineTo(ex + 4, ey + 4);
+      ctx.moveTo(ex + 4, ey - 4); ctx.lineTo(ex - 4, ey + 4);
+      ctx.stroke();
+    });
+    // Çatlak
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 14, y + 44); ctx.lineTo(x + 24, y + 36); ctx.lineTo(x + 30, y + 46);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function spikeShape(x, baseY, w, h, down) {
     const n = Math.max(1, Math.round(w / 22));
     const sw = w / n;
@@ -1614,6 +1689,9 @@
             break;
           case 'w':
             if (c.oy < H) drawWeak(c, tx, ty);
+            break;
+          case 'K':
+            drawStone(tx, ty);
             break;
           case 'c':
             ctx.save();
@@ -1835,10 +1913,12 @@
             ctx.save();
             ctx.translate(cx, cy);
             ctx.rotate(world.t * 0.03);
-            ctx.shadowColor = 'rgba(200,255,61,0.8)';
+            const shrink = e.kind === 'shrink';
+            ctx.shadowColor = shrink ? 'rgba(167,139,250,0.85)' : 'rgba(200,255,61,0.8)';
             ctx.shadowBlur = 26;
-            ctx.fillStyle = C.accent;
+            ctx.fillStyle = shrink ? C.purple : C.accent;
             ctx.fillRect(-15, -15, 30, 30);
+            if (shrink) { ctx.fillStyle = '#0a0a0c'; ctx.fillRect(-7, -2, 14, 4); }
             ctx.shadowBlur = 0;
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.fillRect(-11, -11, 8, 8);
@@ -2353,26 +2433,6 @@
     ctx.restore();
   }
 
-  function drawGhosts() {
-    if (!ghosts.length) return;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,61,61,0.22)';
-    ctx.lineWidth = 3;
-    for (const g of ghosts) {
-      ctx.beginPath();
-      ctx.moveTo(g.x - 9, g.y - 9); ctx.lineTo(g.x + 9, g.y + 9);
-      ctx.moveTo(g.x + 9, g.y - 9); ctx.lineTo(g.x - 9, g.y + 9);
-      ctx.stroke();
-    }
-    if (ghosts.length >= 5) {
-      ctx.font = '600 13px ' + FONT_MONO;
-      ctx.fillStyle = 'rgba(255,61,61,0.35)';
-      ctx.textAlign = 'right';
-      ctx.fillText('× ' + ghosts.length, cam + W - 40, H - 30);
-    }
-    ctx.restore();
-  }
-
   function renderParticles() {
     for (const p of particles) {
       ctx.globalAlpha = Math.max(0, p.life / p.max);
@@ -2413,7 +2473,6 @@
     if (screen !== 'menu') for (const e of world.ents) if (e.t === 'sign') drawSign(e);
     drawDoor();
     drawTiles();
-    drawGhosts();
     drawEnts();
     drawPlayer();
     renderParticles();
@@ -2743,7 +2802,7 @@
   on('btnLevels', () => { levelsReturn = 'menu'; setScreen('levels'); });
   on('btnSettings', () => { settingsReturn = 'menu'; setScreen('settings'); });
   on('btnResume', () => setScreen('playing'));
-  on('btnRestart', () => { loadLevel(levelIdx, { silent: true }); setScreen('playing'); });
+  on('btnRestart', () => { clearStones(); loadLevel(levelIdx, { silent: true }); setScreen('playing'); });
   on('btnPauseLevels', () => { levelsReturn = 'paused'; setScreen('levels'); });
   on('btnPauseSettings', () => { settingsReturn = 'paused'; setScreen('settings'); });
   on('btnPauseMenu', () => setScreen('menu'));
@@ -2843,14 +2902,14 @@
         ZT.audio.play('ui');
         setChapter(chapterSel + (c === 'KeyE' ? 1 : -1));
       }
-      if (screen === 'paused' && c === 'KeyR') { loadLevel(levelIdx, { silent: true }); setScreen('playing'); }
+      if (screen === 'paused' && c === 'KeyR') { clearStones(); loadLevel(levelIdx, { silent: true }); setScreen('playing'); }
       return;
     }
 
     if (LEFT.includes(c)) keys.left = true;
     if (RIGHT.includes(c)) keys.right = true;
     if (JUMP_KEYS.includes(c)) { keys.jump = true; e.preventDefault(); }
-    if (c === 'KeyR' && !e.repeat && world.exiting === 0) loadLevel(levelIdx, { silent: true });
+    if (c === 'KeyR' && !e.repeat && world.exiting === 0) { clearStones(); loadLevel(levelIdx, { silent: true }); }
   });
 
   window.addEventListener('keyup', (e) => {
