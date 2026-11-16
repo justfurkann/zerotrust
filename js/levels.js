@@ -19,6 +19,7 @@
  * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge),
  * window (sahte hata penceresi), gflip (zıplayınca yerçekimi dönen alan),
  * decoy (sahte kapı), revenge (önceki ölüm noktaları tuzağa döner).
+ * Perde VI: phase (her zıplayışta A / B kareleri yer değiştirir; A başta katı, B hayalet).
  * Perde V: stone (son ölümlerin taşa döner; max: kaç tane), cube kind: 'shrink' (küçültür).
  * Perde IV nesneleri: cp (kayıt noktası; fake: patlar), btn (düğme; timed: süreli,
  * hold: basılıyken, ceil: tavanda), gate (kapı; id / ids, latch: açılınca kalır,
@@ -918,6 +919,180 @@ window.ZT = window.ZT || {};
           ]
         };
       }
+    },
+    // ───────────── Perde VI: her zıplayış dünyayı değiştirir ─────────────
+    // A (pembe) bloklar başta katı, B (mavi) bloklar hayalettir. Her zıplayışta yer değiştirirler.
+    // Hayalet bloğun içindeyken zıplarsan blok katılaşır ve ezilirsin.
+
+    // 37 — Tek Çift: çukurun üstünde ilk basman gereken blok, şu an orada olmayan blok.
+    // Kapının önündeki duvar ise zıpladığın için katılaşır; bir kez daha zıpla.
+    {
+      key: 'l37',
+      build(b) {
+        b.fill(0, 14, 8, 4, '#');
+        b.fill(23, 14, 9, 4, '#');
+        b.fill(9, 14, 3, 1, 'B');
+        b.fill(14, 14, 3, 1, 'A');
+        b.fill(19, 14, 3, 1, 'B');
+        b.fill(27, 13, 1, 1, '^');
+        b.fill(29, 0, 1, 10, '#');
+        b.fill(29, 10, 1, 4, 'B');
+        return {
+          spawn: [2, 13],
+          door: { x: 30, y: 13 },
+          ents: [
+            { t: 'phase' },
+            { t: 'sign', x: 1, y: 13, k: 'l37.s1' }
+          ]
+        };
+      }
+    },
+
+    // 38 — Sayaç: üç duvar, üç diken. Dikenler zıplamaya zorlar, zıplamak sayıyı bozar.
+    // Son duvardan önceki hayalet bloğun üstünden geçmek için tam bir fazla zıplayış gerekir.
+    {
+      key: 'l38',
+      cols: 40,
+      build(b) {
+        b.fill(0, 14, 40, 4, '#');
+        b.fill(12, 0, 1, 10, '#');
+        b.fill(12, 10, 1, 4, 'A');
+        b.fill(16, 13, 1, 1, '^');
+        b.fill(20, 0, 1, 10, '#');
+        b.fill(20, 10, 1, 4, 'B');
+        b.fill(24, 13, 1, 1, '^');
+        b.fill(27, 13, 1, 1, '^');
+        b.fill(28, 13, 2, 1, 'B');
+        b.fill(30, 0, 1, 10, '#');
+        b.fill(30, 10, 1, 4, 'A');
+        return {
+          spawn: [2, 13],
+          door: { x: 36, y: 13 },
+          ents: [
+            { t: 'phase' },
+            { t: 'sign', x: 1, y: 13, k: 'l38.s1' },
+            { t: 'sign', x: 21, y: 13, k: 'l38.s2' }
+          ]
+        };
+      }
+    },
+
+    // 39 — Sabit Nokta: bloklar gelip gider ama taş kalır. Son blok ile karşı kıyı
+    // arası fazla uzun; dikenlerin doğru yerinde öl, taşın basamak olsun.
+    {
+      key: 'l39',
+      cols: 40,
+      build(b) {
+        b.fill(0, 14, 40, 4, '#');
+        b.fill(10, 13, 16, 1, '^');
+        b.fill(12, 12, 2, 1, 'B');
+        b.fill(17, 12, 2, 1, 'A');
+        b.fill(30, 0, 1, 10, '#');
+        b.fill(30, 10, 1, 4, 'B');
+        return {
+          spawn: [2, 13],
+          door: { x: 36, y: 13 },
+          ents: [
+            { t: 'phase' },
+            { t: 'stone', max: 3 },
+            { t: 'sign', x: 1, y: 13, k: 'l39.s1' }
+          ]
+        };
+      }
+    },
+
+    // 40 — Arkandan Sayan Var: gölgen zıplasa da sayılmaz, sayan sensin.
+    // İkinci düğme bir hayalet bloğun içinde: oraya çift sayıyla varmalısın.
+    // Gölge peşindeyken çukuru bloklarla geç.
+    {
+      key: 'l40',
+      cols: 48,
+      build(b) {
+        b.fill(0, 14, 48, 4, '#');
+        b.fill(5, 13, 1, 1, '^');
+        b.fill(13, 13, 1, 1, 'B');
+        b.fill(18, 0, 1, 10, '#');
+        b.clear(25, 14, 12, 4);
+        b.fill(27, 14, 3, 1, 'B');
+        b.fill(32, 14, 3, 1, 'A');
+        b.fill(42, 0, 1, 10, '#');
+        b.fill(42, 10, 1, 4, 'A');
+        return {
+          spawn: [2, 13],
+          door: { x: 45, y: 13 },
+          ents: [
+            { t: 'phase' },
+            { t: 'clone', start: 60, delay: 90 },
+            { t: 'sign', x: 0, y: 13, k: 'l40.s1' },
+            { t: 'btn', x: 8, y: 13, id: 1, hold: true },
+            { t: 'btn', x: 13, y: 13, id: 2, hold: true },
+            { t: 'gate', x: 18, y: 10, h: 4, ids: [1, 2], latch: true },
+            { t: 'cp', x: 21, y: 13, id: 1 }
+          ]
+        };
+      }
+    },
+
+    // 41 — Raydan Çıkma: uzun bir platform yolculuğu. Yoldaki lazerlerin üstünden
+    // zıplamak zorundasın; her zıplayış ilerideki bloklardan birini katılaştırır.
+    // Katı bloğa çarparsan platform altından kayar gider.
+    {
+      key: 'l41',
+      cols: 64,
+      build(b) {
+        b.fill(0, 14, 10, 4, '#');
+        b.fill(40, 14, 24, 4, '#');
+        b.fill(22, 12, 1, 2, 'B');
+        b.fill(33, 12, 1, 2, 'A');
+        b.fill(46, 13, 1, 1, '^');
+        b.fill(51, 0, 1, 10, '#');
+        b.fill(51, 10, 1, 4, 'B');
+        return {
+          spawn: [2, 13],
+          door: { x: 60, y: 13 },
+          ents: [
+            { t: 'phase' },
+            { t: 'sign', x: 1, y: 13, k: 'l41.s1' },
+            { t: 'mover', x: 10, y: 14, w: 3, to: [37, 14], speed: 3, wait: 40, trig: [10.2, 12.5, 2.6, 1.6] },
+            { t: 'laser', x: 17, y: 13, len: 1, dir: 'v', on: 5000, off: 1, phase: 0 },
+            { t: 'laser', x: 28, y: 13, len: 1, dir: 'v', on: 5000, off: 1, phase: 0 },
+            { t: 'cp', x: 42, y: 13, id: 1 }
+          ]
+        };
+      }
+    },
+
+    // 42 — Fazla Mesai: gidiş ve dönüş, sayarak. Anahtar bir çıkıntının üstünde:
+    // çıkarken zıplarsın, inerken zıplamazsın. Dönüşte sayı bir kayar.
+    {
+      key: 'l42',
+      cols: 64,
+      build(b) {
+        b.fill(0, 14, 64, 4, '#');
+        b.fill(12, 0, 1, 10, '#');
+        b.fill(12, 10, 1, 4, 'A');
+        b.fill(18, 13, 1, 1, '^');
+        b.fill(24, 0, 1, 10, '#');
+        b.fill(24, 10, 1, 4, 'B');
+        b.clear(30, 14, 12, 4);
+        b.fill(31, 14, 3, 1, 'B');
+        b.fill(36, 14, 3, 1, 'A');
+        b.fill(46, 0, 1, 10, '#');
+        b.fill(46, 10, 1, 4, 'A');
+        b.fill(54, 12, 4, 2, '#');
+        return {
+          spawn: [6, 13],
+          door: { x: 3, y: 13, locked: true },
+          ents: [
+            { t: 'phase' },
+            { t: 'sign', x: 7, y: 13, k: 'l42.s1' },
+            { t: 'cp', x: 27, y: 13, id: 1 },
+            { t: 'cp', x: 48, y: 13, id: 2 },
+            { t: 'sign', x: 49, y: 13, k: 'l42.s2' },
+            { t: 'key', x: 56, y: 11, hostile: true, delay: 30, speed: 5.2 }
+          ]
+        };
+      }
     }
   ];
 
@@ -932,7 +1107,8 @@ window.ZT = window.ZT || {};
     { key: 'ch2', from: 8, to: 15, tint: [79, 209, 255] },
     { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] },
     { key: 'ch4', from: 24, to: 29, tint: [255, 122, 92] },
-    { key: 'ch5', from: 30, to: 35, tint: [255, 204, 77] }
+    { key: 'ch5', from: 30, to: 35, tint: [255, 204, 77] },
+    { key: 'ch6', from: 36, to: 41, tint: [255, 122, 184] }
   ];
   ZT.chapterOf = (idx) => Math.max(0, ZT.CHAPTERS.findIndex((c) => idx >= c.from && idx <= c.to));
 

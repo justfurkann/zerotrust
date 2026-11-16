@@ -198,6 +198,8 @@ window.ZT = window.ZT || {};
             break;
           case 'trap': tone('square', [[620, 0], [180, 0.12, true]], 0.14, 0.06); break;
           case 'btn': tone('square', [[330, 0], [495, 0.05]], 0.09, 0.06); break;
+          case 'phase0': tone('triangle', [[660, 0], [440, 0.07]], 0.1, 0.05); break;
+          case 'phase1': tone('triangle', [[440, 0], [660, 0.07]], 0.1, 0.05); break;
           case 'tick': tone('sine', [[880, 0]], 0.04, 0.035); break;
           case 'tick2': tone('square', [[1175, 0]], 0.05, 0.045); break;
           case 'laser': tone('sawtooth', [[1400, 0], [700, 0.1, true]], 0.12, 0.03); break;

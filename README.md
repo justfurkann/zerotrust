@@ -2,9 +2,10 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 36 bölüm, beş perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
+- 42 bölüm, altı perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
 - Perde IV uzun, çok aşamalı bölümlerdir: kamera kayar, kayıt noktaları vardır, düğmeler kapı açar, lazerlerin ritmi, hareketli platformlar ve gidişin bir de dönüşü olur
 - Perde V'te ölüm bir kaynaktır: son üç ölümün taşa döner. Taşlardan köprü kurar, düğmeyi taşınla basılı tutarsın
+- Perde VI'da her zıplayış pembe ve mavi blokları yer değiştirir: hangi bloğun katı olacağı kaç kez zıpladığına bağlıdır
 - Ana menüde oyun arka planda kendi kendine oynar; bölüm seçiminde her bölümün küçük haritası görünür
 - Prosedürel müzik ve ses efektleri (dosyasız, Web Audio)
 - Bölüm başına en iyi süre ve ölüm sayısı, ölüm izleri, duruma göre alaycı mesajlar
@@ -63,6 +64,8 @@ Perde IV nesneleri: `cp` (kayıt noktası; `fake: true` olanı patlar), `btn` (d
 Düğme ile bağlı olduğu kapı aynı renkte çizilir. Gölge (`clone`) de düğmelere basabilir.
 Perde V nesneleri: `stone` (`max` kadar son ölüm, öldüğün karede taşa döner; taş düğmeye basar, R taşları siler),
 `cube` için `kind: 'shrink'` (küçültür).
+Perde VI: `phase` nesnesi olan bölümde `A` kareleri başta katı, `B` kareleri hayalettir ve her zıplayışta yer değiştirirler
+(yay sayılmaz, gölgenin zıplayışı sayılmaz). Katılaşan bloğun içinde kalan oyuncu ölür.
 Bölüm tanımına `cols: 64` gibi bir genişlik verirsen bölüm ekrandan geniş olur ve kamera oyuncuyu takip eder.
 
 ## Bölümleri otomatik denemek
