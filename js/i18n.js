@@ -345,6 +345,32 @@ window.ZT = window.ZT || {};
 
       'die.phase': 'Bloğun içinde kaldın. Saymayı unuttun.',
 
+      "ch7.name": "Perde VII",
+      "ch7.title": "Bakış Açısı",
+      "ch7.desc": "Okun gösterdiği yöne bakınca blok katılaşır. Arkana bakmak bazen kurtarır, bazen zemini yok eder.",
+      "l43.title": "Bakış Açısı",
+      "l43.hint": "Yeşil oklar sağa, turuncu oklar sola bakarken katı. Yeşil köprünün ucundan turuncuya zıpla; inişten önce kısa bir sol dokunuş yapıp tuşları bırak. Sonra sağa zıplayarak kıyıya geç.",
+      "l43.s1": "Ok nereye, yüzün oraya: blok katı.",
+      "l43.s2": "İleri gitmek için arkana bak.",
+      "l44.title": "Kör Nokta",
+      "l44.hint": "Platforma ortasından bin. Bir an sola bas, sonra yön tuşlarını bırak. Yüzün sola bakarken platform seni sağa, yeşil duvarın içinden taşır. Duvar tamamen arkanda kalmadan sağa dönme. Kıyıya yaklaşınca sağa zıpla.",
+      "l44.s1": "Yoluna bakma. Gerisini platform halleder.",
+      "l45.title": "Dönüş Yolu",
+      "l45.hint": "Alttaki yeşil köprüden sağa yürü. Sağdaki anahtarı al; sola dönünce o köprü kaybolur. Basamağa çık, üstteki turuncu köprüye sola zıpla ve çıkışa dön.",
+      "l45.s1": "Giderken yol var. Dönerken?",
+      "l45.s2": "Yukarıdaki yol, geri dönene.",
+      "l46.title": "Göz Göze",
+      "l46.hint": "İlk düğmeyi geçip yeşil bloğun üstüne zıpla. Sola bakıp bloğun içindeki ikinci düğmeye düş; gölgen ilkine basınca kapı açılır. Yerinde tam zıpla; bloğun üstüne yükseldikten sonra sağa dön. Son köprüde sağa bak.",
+      "l46.s1": "Gölgenin yüzü değil, senin yüzün önemli.",
+      "l47.title": "Ters Bakış",
+      "l47.hint": "Sağdaki mavi alanda zıpla: tavana düşersin. Sola bakarak turuncu tavanda yürü; tavandaki dikeni aşağı doğru zıplayarak geç. Soldaki mavi alanda yeniden zıpla, zemine in.",
+      "l47.s1": "Ters dünyada bile sol, soldur.",
+      "l48.title": "Son Bakış",
+      "l48.hint": "Platformda sola bakıp duvardan geç. Kayıt noktasından sonra yeşilden turuncuya zıpla; inmeden sola dön. Son kayıt noktasından sağa yürürken turuncu duvar hayalet olur: gerçek kapı onun içinde. Sağdaki kapı sahte.",
+      "l48.s1": "Gözünü kapatamazsın. Yüzünü çevirebilirsin.",
+      "l48.s2": "Çıkışa bak. Arkana değil.",
+      "die.gaze": "Baktığın blok katılaştı. İçindeydin.",
+
       'mobile.title': 'Zero Trust sadece bilgisayarda oynanır.',
       'mobile.sub': 'Klavye lazım. Lütfen PC\'den gir.'
     },
@@ -689,6 +715,32 @@ window.ZT = window.ZT || {};
 
       'die.phase': 'Stuck inside a block. You lost count.',
 
+      "ch7.name": "Act VII",
+      "ch7.title": "Point of View",
+      "ch7.desc": "Face the arrow and the block becomes solid. Looking back can save you, or erase the floor.",
+      "l43.title": "Point of View",
+      "l43.hint": "Green arrows are solid while facing right; orange while facing left. Jump from green toward orange, tap left before landing, then release the keys. Jump right to the far bank.",
+      "l43.s1": "Face the arrow. Make it solid.",
+      "l43.s2": "Look back to move forward.",
+      "l44.title": "Blind Spot",
+      "l44.hint": "Board the middle of the platform. Tap left, then release the direction keys. The platform carries you right through the green wall while you face left. Do not face right until fully clear. Jump right when near the far bank.",
+      "l44.s1": "Do not watch the road. Let the platform drive.",
+      "l45.title": "Return Route",
+      "l45.hint": "Walk right across the lower green bridge. Collect the key on the right. Turning left removes that bridge: climb the step and jump left onto the upper orange bridge to return.",
+      "l45.s1": "There is a way out. What about back?",
+      "l45.s2": "The high road is for coming back.",
+      "l46.title": "Eye Contact",
+      "l46.hint": "Pass the first button and jump onto the green block. Face left to fall onto the second button inside it; your shadow opens the gate at the first. Jump straight up; face right only after rising above the block. Face right on the last bridge.",
+      "l46.s1": "Your shadow does not decide. You do.",
+      "l47.title": "Upside-Down View",
+      "l47.hint": "Jump in the blue zone on the right to fall upward. Face left and cross the orange ceiling; jump downward over the ceiling spike. Jump in the left blue zone to return to the floor.",
+      "l47.s1": "Even upside down, left is left.",
+      "l48.title": "Last Look",
+      "l48.hint": "Face left on the platform to pass the wall. After the checkpoint, jump from green to orange and face left before landing. After the last checkpoint walk right into the orange wall: the real exit is inside. The door on the far right is fake.",
+      "l48.s1": "You cannot close your eyes. You can turn away.",
+      "l48.s2": "Look at the exit. Not behind you.",
+      "die.gaze": "The block you faced became solid. Around you.",
+
       'mobile.title': 'Zero Trust is desktop only.',
       'mobile.sub': 'You need a keyboard. Please open it on a PC.'
     }
@@ -735,3 +787,4 @@ window.ZT = window.ZT || {};
 
   ZT.onLang = (fn) => listeners.push(fn);
 })(window.ZT);
+

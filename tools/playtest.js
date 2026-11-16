@@ -7,16 +7,19 @@
 //   T n            dünya saati n olana kadar bekle   T% [m, a]   saat mod m == a olana kadar
 //   CEIL           tavana inene kadar (ters yerçekimi)
 //   D / RD / LD / RJD n   (taş bölümleri) bilerek öl: verilen tuşlarla ölene kadar devam et, sonra yeniden doğmayı bekle
-const { chromium } = require('playwright');
+const nodeMode = process.env.ZT_NODE === '1';
+const chromium = nodeMode ? null : require('playwright').chromium;
 const path = require('path');
 const programs = require(path.resolve(process.argv[2]));
 const only = process.argv.slice(3).map(Number);
 (async () => {
-  const b = await chromium.launch();
-  const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
-  p.on('pageerror', (e) => console.log('PAGE ERROR', String(e)));
-  await p.goto('file://' + path.resolve(__dirname, '../index.html') + '?zttest');
-  await p.waitForTimeout(300);
+  const b = nodeMode ? null : await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const p = nodeMode ? require('./node-env')() : await b.newPage({ viewport: { width: 1280, height: 720 } });
+  if (!nodeMode) {
+    p.on('pageerror', (e) => console.log('PAGE ERROR', String(e)));
+    await p.goto('file://' + path.resolve(__dirname, '../index.html') + '?zttest');
+    await p.waitForTimeout(300);
+  }
   let fail = 0;
   for (const [num, prog] of Object.entries(programs)) {
     if (only.length && !only.includes(+num)) continue;
@@ -72,6 +75,7 @@ const only = process.argv.slice(3).map(Number);
     if (!res.ok || process.env.V) console.log(res.log.slice(res.ok ? 0 : -8).join('\n'));
     if (!res.ok) fail++;
   }
-  await b.close();
+  if (b) await b.close();
   process.exit(fail ? 1 : 0);
 })();
+
