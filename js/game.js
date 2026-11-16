@@ -3052,6 +3052,10 @@
   // ───────────────────────── Başlat ─────────────────────────
   loadLevel(0, { silent: true });
   setScreen('menu');
+  // Test önizlemesi: yeni perdeyi eski bölümleri yeniden açmadan deneyebil.
+  // Normal oyun bağlantılarında ilerleme/kilit kuralı değişmez.
+  const testStart = ZT.debug && /[?&]level=(\d+)(?:&|$)/.exec(location.search);
+  if (testStart && +testStart[1] >= 1 && +testStart[1] <= N) startLevel(+testStart[1] - 1);
   requestAnimationFrame((now) => { last = now; requestAnimationFrame(frame); });
 })();
 

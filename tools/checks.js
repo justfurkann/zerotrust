@@ -66,3 +66,12 @@ for (let extra = 0; extra <= 8; extra++) {
 }
 assert(wins >= 6, 'intro turn has too narrow a timing window: '+wins+'/9');
 console.log('PASS: intro turn succeeds at '+wins+'/9 consecutive timing offsets');
+
+const preview = createGame({ search: '?zttest&level=43' });
+assert.equal(preview.ZT.debug.state().level, 42);
+assert.equal(preview.ZT.debug.state().screen, 'playing');
+assert.equal(createGame({ search: '?zttest&level=99' }).ZT.debug.state().screen, 'menu');
+const normal = createGame({ search: '?level=43' });
+assert.equal(normal.ZT.debug, undefined);
+assert.equal(normal.elements.get('stage').dataset.screen, 'menu');
+console.log('PASS: preview deep link starts 43 only in test mode; invalid/normal links stay at menu');

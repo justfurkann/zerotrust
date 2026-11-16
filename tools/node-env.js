@@ -39,7 +39,7 @@ module.exports = function createGame(options = {}) {
   const saved = new Map(Object.entries(options.saved || {}));
   const env = {
     document, navigator: { language: 'tr', userAgent: 'Node physics test', maxTouchPoints: 0 },
-    location: { search: '?zttest' }, localStorage: { getItem: (k) => saved.get(k) || null, setItem: (k,v) => saved.set(k,v) },
+    location: { search: options.search || '?zttest' }, localStorage: { getItem: (k) => saved.get(k) || null, setItem: (k,v) => saved.set(k,v) },
     performance: { now: () => 0 }, requestAnimationFrame: noop, setTimeout: () => 0, clearTimeout: noop,
     addEventListener: noop, matchMedia: () => ({ matches: false }), console
   };
