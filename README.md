@@ -2,13 +2,14 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 42 bölüm, altı perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
+- 48 bölüm, yedi perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
 - Perde IV uzun, çok aşamalı bölümlerdir: kamera kayar, kayıt noktaları vardır, düğmeler kapı açar, lazerlerin ritmi, hareketli platformlar ve gidişin bir de dönüşü olur
 - Perde V'te ölüm bir kaynaktır: son üç ölümün taşa döner. Taşlardan köprü kurar, düğmeyi taşınla basılı tutarsın
 - Perde VI'da her zıplayış pembe ve mavi blokları yer değiştirir: hangi bloğun katı olacağı kaç kez zıpladığına bağlıdır
+- Perde VII: Bakış Açısı. Ok blokları baktığın yöne göre katılaşır; taşıtta arkana bak, havada yüzünü çevir, dönüş yolunu yukarıda ara.
 - Ana menüde oyun arka planda kendi kendine oynar; bölüm seçiminde her bölümün küçük haritası görünür
 - Prosedürel müzik ve ses efektleri (dosyasız, Web Audio)
-- Bölüm başına en iyi süre ve ölüm sayısı, ölüm izleri, duruma göre alaycı mesajlar
+- Bölüm başına en iyi süre ve ölüm sayısı, duruma göre alaycı mesajlar
 - Türkçe / English
 - Yalnızca masaüstü. Telefon ve tabletten girenlere "PC'den gir" ekranı gösterilir.
 - İlerleme ve ayarlar tarayıcıda (`localStorage`) saklanır.
@@ -66,6 +67,7 @@ Perde V nesneleri: `stone` (`max` kadar son ölüm, öldüğün karede taşa dö
 `cube` için `kind: 'shrink'` (küçültür).
 Perde VI: `phase` nesnesi olan bölümde `A` kareleri başta katı, `B` kareleri hayalettir ve her zıplayışta yer değiştirirler
 (yay sayılmaz, gölgenin zıplayışı sayılmaz). Katılaşan bloğun içinde kalan oyuncu ölür.
+Perde VII: `gaze` nesnesi ve `>` / `<` kareleri. Okun yönüne bakarken katı, aksi yönde hayalettirler. Son bakış yönü tuşlar bırakılınca korunur; hız, gölge ve farenin konumu etkilemez. İçindeyken katılaştırmak öldürür.
 Bölüm tanımına `cols: 64` gibi bir genişlik verirsen bölüm ekrandan geniş olur ve kamera oyuncuyu takip eder.
 
 ## Bölümleri otomatik denemek
@@ -75,7 +77,13 @@ Fizik deterministik olduğu için bölümler kare kare oynatılıp geçilebildi�
 
 ```bash
 node tools/playtest.js tools/solutions.js
+
+# Tarayıcı kurulamayan ortamlarda aynı fizik, Node VM + minimal DOM ile:
+ZT_NODE=1 node tools/playtest.js tools/solutions.js
 ```
 
 Taş bölümlerinde `RD` / `D` adımı "burada bilerek öl" demektir; araç ölümü bekler ve yeniden doğmayı bekleyip devam eder.
 Yeni bir bölüm yazdığında çözümünü `tools/solutions.js` içine ekle; bölüm gerçekten bitirilebiliyor mu, böyle anlaşılır.
+
+
+Node modu görsel DOM düzenini ve Web Audio çıktısını doğrulamaz. Sistem Chromium kullanmak için tarayıcı modunda `CHROMIUM_PATH=/usr/bin/chromium` verilebilir.

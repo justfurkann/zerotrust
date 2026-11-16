@@ -296,7 +296,7 @@
         .map((g) => ({ x: g.x, y: g.y }));
     }
     const w = { key: L.key, idx, cols: L.cols, cells, ents, door, spawn: L.spawn, inverted: false, t: 0, exiting: 0, hist: [], armT: -1, secretOpen: false, sx: 0,
-      phase: 0, phased: ents.some((e) => e.t === 'phase'), phaseHit: false, phaseT: 0 };
+      phase: 0, phased: ents.some((e) => e.t === 'phase'), phaseHit: false, phaseT: 0, gaze: ents.some((e) => e.t === 'gaze'), gazeHit: false };
     // Kayıt noktasından dönüş: o ana kadar kalıcı açılmış şeyler açık kalır
     if (checkpoint) {
       for (const e of ents) {
@@ -327,6 +327,8 @@
       case 'K': return true;
       case 'A': return world.phase === 0;
       case 'B': return world.phase === 1;
+      case '>': return player.facing > 0;
+      case '<': return player.facing < 0;
       default: return false;
     }
   }
@@ -637,12 +639,23 @@
       const turning = p.vx !== 0 && Math.sign(p.vx) !== dir;
       p.vx += dir * acc * (turning ? 1.8 : 1);
       p.vx = Math.max(-maxv, Math.min(maxv, p.vx));
+      const turned = p.facing !== dir;
       p.facing = dir;
+      // Bakış blokları hızına değil son baktığın yöne bağlıdır. Platform seni
+      // taşırken veya havada süzülürken yüzünü çevirip tuşları bırakabilirsin.
+      if (turned && world.gaze) {
+        ZT.audio.play('look');
+        forTiles(p.x + 4, p.y + 4, p.w - 8, p.h - 8, (c) => {
+          if ((c.k === '<' || c.k === '>') && isSolid(c)) world.gazeHit = true;
+        });
+      }
       if (turning && p.onGround) dust(p.x + p.w / 2, p.y + p.h, 2, -dir);
     } else {
       const f = p.onGround ? FRIC_G : FRIC_A;
       p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f;
     }
+
+    if (world.gazeHit) return; // yeni katı blok oyuncuyu dışarı itmeden ölümü işle
 
     // Zıplama: tampon + coyote time + değişken yükseklik
     if (keys.jump && !jumpPrev) p.buffer = BUFFER;
@@ -1340,6 +1353,8 @@
     if (levelTicks === 1801) updateHint();
     updateEnts();
     updatePlayer();
+    // İçinde katılaştırdığın blok, hemen yanındaki çıkıştan önce değerlendirilir.
+    if (world.gazeHit) { killPlayer('die.gaze'); return; }
     world.hist.push([player.x, player.y, player.facing]);
     if (updateDoor()) return;
     checkDeath();
@@ -1648,6 +1663,30 @@
     ctx.restore();
   }
 
+  // Okun gösterdiği yöne bakınca dolan, aksi yönde hayalet olan bloklar.
+  // Renk dışında doluluk ve büyük oklar da durumlarını anlatır.
+  const GAZE_COL = { '>': '#70e4b0', '<': '#ffb36b' };
+  function drawGazeBlock(c, tx, ty) {
+    const x = tx * T, y = ty * T, solid = isSolid(c), col = GAZE_COL[c.k];
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.globalAlpha = solid ? 0.23 : 0.035;
+    ctx.fillRect(x + 2, y + 2, T - 4, T - 4);
+    ctx.globalAlpha = solid ? 1 : 0.5;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = solid ? 3 : 2;
+    if (!solid) ctx.setLineDash([5, 7]);
+    ctx.strokeRect(x + 3, y + 3, T - 6, T - 6);
+    ctx.setLineDash([]);
+    const d = c.k === '>' ? 1 : -1, cx = x + T / 2, cy = y + T / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - d * 9, cy - 10);
+    ctx.lineTo(cx + d * 5, cy);
+    ctx.lineTo(cx - d * 9, cy + 10);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function spikeShape(x, baseY, w, h, down) {
     const n = Math.max(1, Math.round(w / 22));
     const sw = w / n;
@@ -1742,6 +1781,10 @@
             break;
           case 'K':
             drawStone(tx, ty);
+            break;
+          case '<':
+          case '>':
+            drawGazeBlock(c, tx, ty);
             break;
           case 'A':
           case 'B':
@@ -2479,7 +2522,7 @@
     }
     drawBody(p.x, p.y, p.w, p.h, p.squash, p.facing, false, {
       inverted: world.inverted,
-      look: p.look,
+      look: world.gaze ? null : p.look,
       blink: p.blink > 0,
       falling: !p.onGround && p.vy * p.grav > 9,
       running: p.onGround && Math.abs(p.vx) > 6.5
@@ -2683,6 +2726,9 @@
           g.globalAlpha = k === 'A' ? 0.85 : 0.35;
           g.fillRect(px, py, u, u);
           g.globalAlpha = 1;
+        } else if (k === '<' || k === '>') {
+          g.fillStyle = GAZE_COL[k];
+          g.fillRect(px, py, u, u);
         } else if (k === 'w') {
           g.fillStyle = '#b9a58a';
           g.fillRect(px, py, u, 2);
@@ -2987,17 +3033,18 @@
   // index.html?zttest ile açılınca bölümleri kare kare oynatan otomatik testler için.
   if (/[?&]zttest/.test(location.search)) {
     ZT.debug = {
-      load(i) { save = defaults(); save.muted = true; ZT.audio.muted = true; startLevel(i); lastDeath = null; },
+      load(i) { save = defaults(); save.muted = true; ZT.audio.muted = true; startLevel(i); lastDeath = null; freeze = 0; },
       tick(l, r, j) { keys.left = l; keys.right = r; keys.jump = j; step(); },
       state() {
         return {
           level: levelIdx, screen, t: world.t, x: (player.x + player.w / 2) / T, y: (player.y + player.h) / T,
-          vx: player.vx, vy: player.vy, ground: player.onGround, dead: player.dead, grav: player.grav,
+          vx: player.vx, vy: player.vy, facing: player.facing, ground: player.onGround, dead: player.dead, grav: player.grav,
           deaths: levelDeaths, lastDeath, cp: checkpoint && checkpoint.id, locked: world.door.locked,
           exiting: world.exiting, cleared: save.cleared.slice()
         };
       },
       ents() { return world.ents; },
+      render() { render(); },
       warp(tx) { player.x = tx * T; player.y = 13 * T - PH + T; player.vx = player.vy = 0; cam = camTarget(); }
     };
   }
@@ -3007,3 +3054,4 @@
   setScreen('menu');
   requestAnimationFrame((now) => { last = now; requestAnimationFrame(frame); });
 })();
+

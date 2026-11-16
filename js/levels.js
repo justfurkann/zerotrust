@@ -19,6 +19,7 @@
  * cube (dev küp), hud (düşen başlık), fakeGhost (radarın sahte izi), clone (gölge),
  * window (sahte hata penceresi), gflip (zıplayınca yerçekimi dönen alan),
  * decoy (sahte kapı), revenge (önceki ölüm noktaları tuzağa döner).
+ * Perde VII: gaze, > (sağa bakarken katı), < (sola bakarken katı).
  * Perde VI: phase (her zıplayışta A / B kareleri yer değiştirir; A başta katı, B hayalet).
  * Perde V: stone (son ölümlerin taşa döner; max: kaç tane), cube kind: 'shrink' (küçültür).
  * Perde IV nesneleri: cp (kayıt noktası; fake: patlar), btn (düğme; timed: süreli,
@@ -1093,7 +1094,109 @@ window.ZT = window.ZT || {};
           ]
         };
       }
-    }
+    },
+    // Perde VII — Bakış Açısı. > sağa, < sola bakarken katıdır.
+    // 43: Güvenli zeminde öğren; boşlukta inişten önce yüzünü değiştir.
+    {
+      key: 'l43',
+      build(b) {
+        b.fill(0, 14, 10, 4, '#');
+        b.fill(10, 14, 5, 1, '>');
+        b.fill(17, 14, 4, 1, '<');
+        b.fill(22, 14, 10, 4, '#');
+        // İlk deneme alanının altında güvenlik zemini var; köprüde yok.
+        b.fill(5, 12, 2, 1, '>');
+        return { spawn: [2, 13], door: { x: 29, y: 13 }, ents: [
+          { t: 'gaze' }, { t: 'sign', x: 1, y: 11, k: 'l43.s1' },
+          { t: 'sign', x: 11, y: 13, k: 'l43.s2' }
+        ] };
+      }
+    },
+    // 44: Duvarı geçmek için ona bakma. Taşıt seni sağa götürür,
+    // son yön tuşun sola olsa da; tuşu bırakınca bakışın korunur.
+    {
+      key: 'l44', cols: 40,
+      build(b) {
+        b.fill(0, 14, 10, 4, '#'); b.fill(29, 14, 11, 4, '#');
+        b.fill(20, 0, 1, 10, '#'); b.fill(20, 10, 1, 4, '>');
+        return { spawn: [2, 13], door: { x: 37, y: 13 }, ents: [
+          { t: 'gaze' }, { t: 'sign', x: 1, y: 13, k: 'l44.s1' },
+          { t: 'mover', x: 10, y: 14, w: 4, to: [27, 14], speed: 2.5, wait: 90, trig: [10.1, 12.5, 3.8, 1.6] }
+        ] };
+      }
+    },
+    // 45: Aynı açıklığın altta gidişi, üstte dönüşü var. Geri dönünce
+    // alt köprü hayalet olur; anahtardan üstteki sola bakan köprüye çık.
+    {
+      key: 'l45', cols: 48,
+      build(b) {
+        b.fill(0, 14, 10, 4, '#'); b.fill(29, 14, 19, 4, '#');
+        b.fill(10, 14, 19, 1, '>');
+        b.fill(10, 11, 19, 1, '<');
+        b.fill(31, 12, 3, 2, '#');
+        return { spawn: [5, 13], door: { x: 2, y: 13, locked: true }, ents: [
+          { t: 'gaze' }, { t: 'sign', x: 6, y: 13, k: 'l45.s1' },
+          { t: 'key', x: 38, y: 13, hostile: false },
+          { t: 'sign', x: 35, y: 13, k: 'l45.s2' }, { t: 'cp', x: 35, y: 13, id: 1 }
+        ] };
+      }
+    },
+    // 46: Gölgen düğmeye basar ama blokların bakışını değiştiremez.
+    // İkinci düğme > hayaletinin içinde: sola bak, gölgeyi bekle, sola çıkarak dön.
+    {
+      key: 'l46', cols: 48,
+      build(b) {
+        b.fill(0, 14, 48, 4, '#'); b.fill(13, 12, 2, 2, '>');
+        b.fill(21, 0, 1, 10, '#');
+        b.clear(28, 14, 12, 4); b.fill(28, 14, 5, 1, '>'); b.fill(35, 14, 5, 1, '>');
+        return { spawn: [2, 13], door: { x: 45, y: 13 }, ents: [
+          { t: 'gaze' }, { t: 'clone', start: 60, delay: 120 },
+          { t: 'sign', x: 1, y: 13, k: 'l46.s1' },
+          { t: 'btn', x: 8, y: 13, id: 1, hold: true },
+          { t: 'btn', x: 14, y: 13, id: 2, hold: true },
+          { t: 'gate', x: 21, y: 10, h: 4, ids: [1, 2], latch: true },
+          { t: 'cp', x: 24, y: 13, id: 1 }
+        ] };
+      }
+    },
+    // 47: Zemine güvenme; tavanda sola bakan bir yol var.
+    // Başlangıç sağda, çıkış solda. Yerçekimi tersken de bakış kuralı aynıdır.
+    {
+      key: 'l47', cols: 40,
+      build(b) {
+        b.fill(0, 14, 9, 4, '#'); b.fill(31, 14, 9, 4, '#');
+        b.fill(0, 0, 9, 3, '#'); b.fill(31, 0, 9, 3, '#');
+        b.fill(9, 2, 22, 1, '<');
+        b.fill(18, 3, 1, 1, 'v');
+        return { spawn: [36, 13], door: { x: 3, y: 13 }, ents: [
+          { t: 'gaze' }, { t: 'sign', x: 33, y: 13, k: 'l47.s1' },
+          { t: 'gflip', trig: [32, 0, 3, 18] },
+          { t: 'gflip', trig: [5, 0, 3, 18] }
+        ] };
+      }
+    },
+    // 48: Üç sınav, iki gerçek kayıt noktası. Taşıt, havada bakış,
+    // ve en sonda gerçek çıkışı örten hayalet duvar. Sahte kapı sağda.
+    {
+      key: 'l48', cols: 72,
+      build(b) {
+        b.fill(0, 14, 10, 4, '#'); b.fill(29, 14, 10, 4, '#');
+        b.fill(20, 0, 1, 10, '#'); b.fill(20, 10, 1, 4, '>');
+        b.fill(39, 14, 4, 1, '>'); b.fill(45, 14, 4, 1, '<');
+        b.fill(50, 14, 22, 4, '#');
+        b.fill(57, 11, 4, 3, '<');
+        b.fill(65, 13, 1, 1, '^');
+        return { spawn: [2, 13], door: { x: 59, y: 13 }, ents: [
+          { t: 'gaze' }, { t: 'sign', x: 1, y: 13, k: 'l48.s1' },
+          { t: 'mover', x: 10, y: 14, w: 4, to: [27, 14], speed: 2.5, wait: 90, trig: [10.1, 12.5, 3.8, 1.6] },
+          { t: 'cp', x: 31, y: 13, id: 1 },
+          { t: 'cp', x: 53, y: 13, id: 2 },
+          { t: 'sign', x: 54, y: 13, k: 'l48.s2' },
+          { t: 'decoy', x: 69, y: 13 }
+        ] };
+      }
+    },
+
   ];
 
   ZT.COLS = COLS;
@@ -1108,7 +1211,8 @@ window.ZT = window.ZT || {};
     { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] },
     { key: 'ch4', from: 24, to: 29, tint: [255, 122, 92] },
     { key: 'ch5', from: 30, to: 35, tint: [255, 204, 77] },
-    { key: 'ch6', from: 36, to: 41, tint: [255, 122, 184] }
+    { key: 'ch6', from: 36, to: 41, tint: [255, 122, 184] },
+    { key: 'ch7', from: 42, to: 47, tint: [112, 228, 176] }
   ];
   ZT.chapterOf = (idx) => Math.max(0, ZT.CHAPTERS.findIndex((c) => idx >= c.from && idx <= c.to));
 
@@ -1120,3 +1224,4 @@ window.ZT = window.ZT || {};
     return { key: def.key, cols, chars: b.g, spawn: meta.spawn, door: meta.door, ents: meta.ents };
   };
 })(window.ZT);
+
