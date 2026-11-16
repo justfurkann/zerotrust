@@ -182,6 +182,8 @@ window.ZT = window.ZT || {};
       'ev.flip': 'Yerçekimi: ters.',
       'ev.secret': 'Duvar da mı yalancıymış?',
       'ev.revenge': 'Öldüğün yerler artık birer tuzak.',
+      'ev.stone': 'Öldüğün yer taşa döndü. Kullan onu.',
+      'ev.shrink': 'Küçüldün. Hafifledin.',
       'zone.flip': 'ZIPLA',
       'win.title': 'Zero Trust — Hata',
       'win.msg': 'Bağlantı kesildi.',
@@ -256,6 +258,9 @@ window.ZT = window.ZT || {};
       'ch4.name': 'Perde IV',
       'ch4.title': 'Uzun Oyun',
       'ch4.desc': 'Tek ekran bitti. Uzun bölümler, kayıt noktaları, düğmeler, lazerler. Ve gidişin bir de dönüşü var.',
+      'ch5.name': 'Perde V',
+      'ch5.title': 'Ölüm Bir Kaynak',
+      'ch5.desc': 'Son üç ölümün taşa döner. Köprü, basamak, düğmeyi tutan el. Nerede öleceğini sen seç.',
 
       'l25.title': 'Uzun Yol',
       'l25.hint': 'Düğmeye bas ve hemen zıpla. Platformdan çöken basamağa, oradan karşıya. İlk bayrak sahte: üstünden atla. Süreli düğmeden sonra hiç durma.',
@@ -280,6 +285,31 @@ window.ZT = window.ZT || {};
       'l30.hint': 'Düğmenin üstünden atla (dönüşte de). Köprüyü dönüşe sakla. İlk bayrak sahte. Anahtarı almadan önce sağdaki düğmeye bas ki dönüş kapısı açılsın.',
       'l30.s1': 'Bu sefer gerçekten basma.',
       'l30.s2': 'Geldiğin yolu hatırlıyor musun? Güzel. Koş.',
+
+      'l31.title': 'Basamak',
+      'l31.hint': 'Şerit atlanamaz. Dikene bilerek düş: öldüğün yer taşa döner, bir sonraki denemede üstüne bas. Son 3 ölümün sayılır; R taşları siler.',
+      'l31.s1': 'Ölmek de bir seçenek.',
+
+      'l32.title': 'Feda',
+      'l32.hint': 'Kapı düğme basılıyken açık. Düğmenin üstünde dur, lazer seni orada taşa çevirsin. Sonra iki taşla köprü kur. Fazladan ölürsen en eski taş, yani düğmedeki gider.',
+      'l32.s1': 'Bazı kapılar bedel ister.',
+
+      'l33.title': 'İki Gölge',
+      'l33.hint': 'Birinci ve ikinci düğmede yaklaşık bir saniye bekle, üçüncüye bas. O anda gölgelerin diğer iki düğmede olur. Bir saniyeden uzun durursan gölgen sana çarpar.',
+      'l33.s1': 'Üç düğme, bir kişi. Ya da?',
+
+      'l34.title': 'Ağırlık Merkezi',
+      'l34.hint': 'İlk küpü atla, tünele küçükken gir. Tünelden sonra yüksekteki küpü al, duvarı yık. Tahta köprüden önce zıplayıp mor küpe dokun.',
+      'l34.s1': 'Her şey doğru sırayla.',
+
+      'l35.title': 'Köprü Kur',
+      'l35.hint': 'Giderken dikenlere düşüp taşlardan köprü kur. Taşları birbirine yakın bırak: dönüşte anahtar peşindeyken o taşlardan atlayacaksın.',
+      'l35.s1': 'Kapı burada. Anahtar orada. Arada dikenler.',
+
+      'l36.title': 'Sıfır Saat',
+      'l36.hint': 'Gölgenle iki düğmeye bas, taşlarla köprü kur, sonra son düğmenin üstünde dur ve gölgenin seni taşa çevirmesini bekle.',
+      'l36.s1': 'Son kez: her şeyi kullan.',
+      'l36.s2': 'Burada dur. Bekle. Güven bana.',
 
       'ev.cp': 'Kayıt noktası.',
       'ev.gate': 'Kapı açıldı.',
@@ -469,6 +499,8 @@ window.ZT = window.ZT || {};
       'ev.flip': 'Gravity: flipped.',
       'ev.secret': 'Even the wall was lying?',
       'ev.revenge': 'Where you died is now a trap.',
+      'ev.stone': 'Where you died turned to stone. Use it.',
+      'ev.shrink': 'You shrank. Lighter now.',
       'zone.flip': 'JUMP',
       'win.title': 'Zero Trust — Error',
       'win.msg': 'Connection lost.',
@@ -543,6 +575,9 @@ window.ZT = window.ZT || {};
       'ch4.name': 'Act IV',
       'ch4.title': 'The Long Con',
       'ch4.desc': 'No more single screens. Long levels, checkpoints, buttons, lasers. And every way in has a way back.',
+      'ch5.name': 'Act V',
+      'ch5.title': 'Death Is a Resource',
+      'ch5.desc': 'Your last three deaths turn to stone. A bridge, a step, a hand on the button. You choose where to die.',
 
       'l25.title': 'The Long Way',
       'l25.hint': 'Press the button and jump right away. Ride the platform to the crumbling step, then across. The first flag is fake: jump over it. After the timed button, do not stop.',
@@ -567,6 +602,31 @@ window.ZT = window.ZT || {};
       'l30.hint': 'Jump over the button (on the way back too). Save the bridge for the return. The first flag is fake. Press the button on the right before taking the key so the gate is open for your return.',
       'l30.s1': 'This time, really do not press it.',
       'l30.s2': 'Remember the way you came? Good. Run.',
+
+      'l31.title': 'Stepping Stone',
+      'l31.hint': 'The strip is too long to jump. Fall onto the spikes on purpose: where you die turns to stone, step on it next time. Only your last 3 deaths count; R clears the stones.',
+      'l31.s1': 'Dying is an option too.',
+
+      'l32.title': 'Sacrifice',
+      'l32.hint': 'The gate is open only while the button is held. Stand on the button and let the laser turn you to stone there. Then build a two-stone bridge. Die once too often and the oldest stone, the one on the button, is gone.',
+      'l32.s1': 'Some doors take a toll.',
+
+      'l33.title': 'Two Shadows',
+      'l33.hint': 'Wait about a second on the first and second buttons, then step on the third. Your shadows will be on the other two right then. Stay longer than a second and your shadow walks into you.',
+      'l33.s1': 'Three buttons, one person. Or is it?',
+
+      'l34.title': 'Center of Mass',
+      'l34.hint': 'Jump over the first cube and enter the tunnel small. After the tunnel, grab the high cube and smash the wall. Before the wooden bridge, jump and touch the purple cube.',
+      'l34.s1': 'Everything in the right order.',
+
+      'l35.title': 'Build a Bridge',
+      'l35.hint': 'On the way there, die on the spikes to build a bridge of stones. Keep them close together: on the way back, with the key chasing you, you jump across them.',
+      'l35.s1': 'The door is here. The key is there. Spikes in between.',
+
+      'l36.title': 'Zero Hour',
+      'l36.hint': 'Press two buttons with your shadow, build a stone bridge, then stand on the last button and let your shadow turn you to stone.',
+      'l36.s1': 'One last time: use everything.',
+      'l36.s2': 'Stop here. Wait. Trust me.',
 
       'ev.cp': 'Checkpoint.',
       'ev.gate': 'Gate open.',

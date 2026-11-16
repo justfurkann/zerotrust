@@ -2,8 +2,9 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 30 bölüm, dört perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
+- 36 bölüm, beş perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
 - Perde IV uzun, çok aşamalı bölümlerdir: kamera kayar, kayıt noktaları vardır, düğmeler kapı açar, lazerlerin ritmi, hareketli platformlar ve gidişin bir de dönüşü olur
+- Perde V'te ölüm bir kaynaktır: son üç ölümün taşa döner. Taşlardan köprü kurar, düğmeyi taşınla basılı tutarsın
 - Ana menüde oyun arka planda kendi kendine oynar; bölüm seçiminde her bölümün küçük haritası görünür
 - Prosedürel müzik ve ses efektleri (dosyasız, Web Audio)
 - Bölüm başına en iyi süre ve ölüm sayısı, ölüm izleri, duruma göre alaycı mesajlar
@@ -60,6 +61,8 @@ Perde IV nesneleri: `cp` (kayıt noktası; `fake: true` olanı patlar), `btn` (d
 `gate` (kapı; `id` ya da `ids` ile düğmelere bağlanır, `latch` açılınca açık kalır, `inv` basınca kapanır),
 `mover` (hareketli platform; `drop` fazla durursan düşer), `laser` (`on` / `off` / `phase` ile ritim).
 Düğme ile bağlı olduğu kapı aynı renkte çizilir. Gölge (`clone`) de düğmelere basabilir.
+Perde V nesneleri: `stone` (`max` kadar son ölüm, öldüğün karede taşa döner; taş düğmeye basar, R taşları siler),
+`cube` için `kind: 'shrink'` (küçültür).
 Bölüm tanımına `cols: 64` gibi bir genişlik verirsen bölüm ekrandan geniş olur ve kamera oyuncuyu takip eder.
 
 ## Bölümleri otomatik denemek
@@ -71,4 +74,5 @@ Fizik deterministik olduğu için bölümler kare kare oynatılıp geçilebildi�
 node tools/playtest.js tools/solutions.js
 ```
 
+Taş bölümlerinde `RD` / `D` adımı "burada bilerek öl" demektir; araç ölümü bekler ve yeniden doğmayı bekleyip devam eder.
 Yeni bir bölüm yazdığında çözümünü `tools/solutions.js` içine ekle; bölüm gerçekten bitirilebiliyor mu, böyle anlaşılır.
