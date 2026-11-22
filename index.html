@@ -51,8 +51,23 @@
       </div>
 
       <div id="toast" class="toast" role="status" aria-live="polite">
-        <span id="toastMain"></span>
-        <span id="toastSub"></span>
+        <canvas id="toastFace" width="96" height="96" aria-hidden="true"></canvas>
+        <div class="toast-text">
+          <span id="toastMain"></span>
+          <span id="toastSub"></span>
+        </div>
+      </div>
+
+      <!-- Açılış sahnesi ve konuşma kutusu -->
+      <canvas id="cine" width="1920" height="1080" aria-hidden="true"></canvas>
+      <button type="button" id="cineSkip"><span data-i18n="story.skip"></span> ›</button>
+      <div id="dialog" class="dialog" role="dialog" aria-live="polite">
+        <canvas id="dlgFace" width="160" height="160" aria-hidden="true"></canvas>
+        <div class="dlg-body">
+          <b id="dlgName"></b>
+          <p id="dlgText"></p>
+          <span class="dlg-next"><kbd>Space</kbd> ▸</span>
+        </div>
       </div>
 
       <div id="intro">
@@ -87,6 +102,15 @@
 
         <div class="demo-tag"><i></i><span data-i18n="menu.demo"></span></div>
 
+        <!-- Sıfır menüde karşılar; yüzüne tıklayınca konuşmaya devam eder -->
+        <div class="zero-greet" id="zeroGreet">
+          <div class="greet-bubble">
+            <b data-i18n="name.zero"></b>
+            <p id="greetText"></p>
+          </div>
+          <canvas id="greetFace" width="220" height="220" aria-hidden="true"></canvas>
+        </div>
+
         <footer class="bar bottom">
           <div class="stats">
             <div class="stat wide">
@@ -103,6 +127,7 @@
               <span><b id="menuTime">–</b></span>
             </div>
           </div>
+          <button type="button" class="story-link" id="btnStory">▶ <span data-i18n="menu.story"></span></button>
           <span class="dim" data-i18n="controls.short"></span>
         </footer>
       </section>
@@ -225,6 +250,7 @@
   <script src="js/i18n.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/levels.js"></script>
+  <script src="js/story.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

@@ -185,6 +185,39 @@ window.ZT = window.ZT || {};
       musicBus.gain.setValueAtTime(0.25, t);
       musicBus.gain.setTargetAtTime(0.9, t + 0.25, 0.3);
     },
+    // Hikâye sesleri: menüdeki sessiz demo sırasında da çalar (sadece ses kapalıysa susar)
+    voice(kind, vol) {
+      if (this.muted || !ac) return;
+      try {
+        const v = vol === undefined ? 1 : vol;
+        switch (kind) {
+          case 'zero': {
+            // Sıfır: yumuşak, biraz tuhaf, hafif dalgalı bip
+            const f = 430 + Math.random() * 120;
+            tone('triangle', [[f, 0], [f * 1.25, 0.04, true]], 0.07, 0.05 * v);
+            break;
+          }
+          case 'dot': {
+            const f = 820 + Math.random() * 200;
+            tone('sine', [[f, 0]], 0.05, 0.05 * v);
+            break;
+          }
+          case 'rumble': noise(1.2, 0.18, 220); break;
+          case 'grab':
+            tone('sawtooth', [[220, 0], [880, 0.35, true]], 0.4, 0.08);
+            tone('square', [[110, 0], [55, 0.4, true]], 0.45, 0.08);
+            break;
+          case 'bonk':
+            tone('square', [[300, 0], [90, 0.12, true]], 0.15, 0.1);
+            noise(0.12, 0.12, 900);
+            break;
+          case 'glitch':
+            for (let i = 0; i < 5; i++) tone('square', [[200 + Math.random() * 1600, 0]], 0.05, 0.035, i * 0.06);
+            noise(0.4, 0.06, 6000);
+            break;
+        }
+      } catch (e) {}
+    },
     play(kind) {
       if (this.muted || this.quiet) return;
       try {

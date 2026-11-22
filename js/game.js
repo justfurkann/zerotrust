@@ -24,6 +24,8 @@
     return;
   }
 
+  ZT.story.init();
+
   // ───────────────────────── Sabitler ─────────────────────────
   const W = 1920;
   const H = 1080;
@@ -81,7 +83,7 @@
   function defaults() {
     return {
       unlocked: 0, cleared: Array(N).fill(false), deaths: 0,
-      muted: false, music: true, radar: false,
+      muted: false, music: true, radar: false, seenIntro: false,
       best: Array(N).fill(null), ldeaths: Array(N).fill(0)
     };
   }
@@ -398,7 +400,8 @@
   let toastTimer = null;
 
   function toast(main, kind, sub) {
-    if (screen === 'menu') return;   // demo sessizdir
+    if (screen === 'menu' || screen === 'story') return;   // demo ve hikâye sırasında sessiz
+    ZT.story.onToast(kind);          // bildirimleri Sıfır söyler
     toastMain.textContent = main;
     toastSub.textContent = sub || '';
     toastSub.hidden = !sub;
@@ -2691,6 +2694,7 @@
     $('menuTotal').textContent = '/' + N;
     $('menuMeter').style.width = (done / N) * 100 + '%';
     $('menuTime').textContent = done ? fmtTime(totalBest()) : '–';
+    ZT.story.setGreeting({ first: !started, deaths: save.deaths, done, total: N });
     document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('active', b.dataset.lang === ZT.getLang()));
     if (levelIdx !== 0 || player.dead || world.t === 0 || levelDeaths) {
       demoRun = 0;
@@ -2903,7 +2907,23 @@
     $(id).addEventListener('click', () => { ZT.audio.unlock(); ZT.audio.play('ui'); fn(); });
   }
 
-  on('btnPlay', () => startLevel(firstUnfinished()));
+  // İlk kez oynayan önce hikâyeyi izler: Kare ile Nokta, Üçgenlerin baskını, Sıfır
+  function playStory(then) {
+    setScreen('story');
+    ZT.audio.unlock();
+    ZT.story.playIntro(() => {
+      save.seenIntro = true;
+      persist();
+      then();
+    });
+  }
+  function playOrStart() {
+    const idx = firstUnfinished();
+    if (!save.seenIntro && idx === 0) playStory(() => startLevel(0));
+    else startLevel(idx);
+  }
+  on('btnPlay', playOrStart);
+  on('btnStory', () => playStory(() => setScreen('menu')));
   on('btnLevels', () => { levelsReturn = 'menu'; setScreen('levels'); });
   on('btnSettings', () => { settingsReturn = 'menu'; setScreen('settings'); });
   on('btnResume', () => setScreen('playing'));
@@ -2990,6 +3010,8 @@
   window.addEventListener('keydown', (e) => {
     ZT.audio.unlock();
     const c = e.code;
+    if (ZT.story.key(e)) return;       // hikâye açıkken tuşlar ona gider
+    if (screen === 'story') return;
 
     if (c === 'Escape') {
       e.preventDefault();
@@ -3000,7 +3022,7 @@
     if (c === 'KeyF' && !e.repeat) { toggleFullscreen(); return; }
 
     if (screen !== 'playing') {
-      if (screen === 'menu' && c === 'Enter' && document.activeElement === document.body) startLevel(firstUnfinished());
+      if (screen === 'menu' && c === 'Enter' && document.activeElement === document.body) playOrStart();
       const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[c];
       if (arrow) { e.preventDefault(); moveFocus(arrow[0], arrow[1]); }
       if (screen === 'levels' && (c === 'KeyQ' || c === 'KeyE') && !e.repeat) {

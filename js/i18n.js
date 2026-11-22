@@ -7,6 +7,36 @@ window.ZT = window.ZT || {};
   const STRINGS = {
     tr: {
       'tagline': 'Hiçbir şeye güvenme.',
+
+      // ── Hikâye ve anlatıcı ──
+      'name.zero': 'SIFIR',
+      'name.dot': 'NOKTA',
+      'menu.story': 'Hikâyeyi izle',
+      'story.skip': 'Geç',
+      'story.shout': 'KARE!',
+      'story.intro': [
+        'Arkadaşını aldılar, değil mi?',
+        'Üçgenler. Onları tanırım. Yollarına koydukları her şey bir tuzaktır.',
+        'Nokta\'yı geri istiyorsan, sana yolu gösterebilirim.',
+        'Tek bir kuralım var.',
+        'Hiçbir şeye güvenme.',
+        '...Bana bile.'
+      ],
+      'zero.greetFirst': [
+        'Ah. Yeni biri.',
+        'Merhaba. Ben Sıfır.',
+        'Oyna\'ya bas. Sana bir hikâye anlatacağım.',
+        'Belki doğrudur. Belki değil.',
+        'Bana dokunmayı bırak. Gıdıklanıyorum.'
+      ],
+      'zero.greetBack': [
+        'Geri geldin.',
+        'Nokta hâlâ bekliyor. Sanırım.',
+        '{d} bölüm bitti, {total} tane var. Acele etmiyorsun.',
+        '{n} kez öldün. Saydım. Tabii ki saydım.',
+        'Biliyor musun, sana hiç yalan söylemedim. Bu da bir yalan.'
+      ],
+      'zero.greetMany': '{n} ölüm. Ben olsam çoktan vazgeçerdim. İyi ki ben değilsin.',
       'menu.play': 'Oyna',
       'menu.continue': 'Devam Et',
       'menu.levels': 'Bölümler',
@@ -377,6 +407,36 @@ window.ZT = window.ZT || {};
 
     en: {
       'tagline': 'Trust nothing.',
+
+      // ── Story and narrator ──
+      'name.zero': 'ZERO',
+      'name.dot': 'DOT',
+      'menu.story': 'Watch the story',
+      'story.skip': 'Skip',
+      'story.shout': 'SQUARE!',
+      'story.intro': [
+        'They took your friend, didn\'t they?',
+        'The Triangles. I know them. Everything they put in your way is a trap.',
+        'If you want Dot back, I can show you the way.',
+        'I have just one rule.',
+        'Trust nothing.',
+        '...Not even me.'
+      ],
+      'zero.greetFirst': [
+        'Oh. Someone new.',
+        'Hello. I\'m Zero.',
+        'Press Play. I\'ll tell you a story.',
+        'Maybe it\'s true. Maybe not.',
+        'Stop poking me. It tickles.'
+      ],
+      'zero.greetBack': [
+        'You came back.',
+        'Dot is still waiting. I think.',
+        '{d} levels done, {total} in total. No rush, apparently.',
+        'You died {n} times. I counted. Of course I counted.',
+        'You know, I have never lied to you. That was a lie.'
+      ],
+      'zero.greetMany': '{n} deaths. I would have given up long ago. Good thing you\'re not me.',
       'menu.play': 'Play',
       'menu.continue': 'Continue',
       'menu.levels': 'Levels',
