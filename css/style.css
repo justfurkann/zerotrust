@@ -281,6 +281,10 @@ button:disabled { cursor: not-allowed; }
   transition: opacity 0.18s, transform 0.18s;
 }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
+/* Bildirimleri Sıfır söyler: solda yüzü, sağda sözü */
+.toast { flex-direction: row; align-items: center; gap: calc(var(--u) * 1.2); padding-left: calc(var(--u) * 1); text-align: left; }
+#toastFace { width: calc(var(--u) * 6); height: calc(var(--u) * 6); flex: none; }
+.toast-text { display: flex; flex-direction: column; gap: calc(var(--u) * 0.5); }
 #toastMain { font-size: calc(var(--u) * 1.9); font-weight: 600; }
 #toastSub { font-size: calc(var(--u) * 1.45); color: var(--dim); }
 .toast.death { border-left-color: var(--danger); }
@@ -928,3 +932,136 @@ kbd {
 .mobile-block h1 { font-family: var(--display); font-size: 44px; line-height: 0.95; letter-spacing: -0.04em; }
 .mb-main { font-size: 17px; line-height: 1.5; }
 .mb-sub { font-size: 14px; line-height: 1.5; color: var(--dim); }
+
+
+/* ───────────── Hikâye: açılış sahnesi, konuşma kutusu, Sıfır ───────────── */
+
+#cine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  display: none;
+}
+#cine.on { display: block; }
+
+#cineSkip {
+  position: absolute;
+  right: calc(var(--u) * 3);
+  top: calc(var(--u) * 3);
+  z-index: 32;
+  display: none;
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.4);
+  border: 1px solid var(--line-2);
+  color: var(--dim);
+  font-size: calc(var(--u) * 1.3);
+  letter-spacing: 0.08em;
+  background: rgba(6, 6, 7, 0.6);
+}
+#cineSkip.on { display: block; }
+#cineSkip:hover { color: var(--ink); border-color: var(--ink); }
+
+.dialog {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 10);
+  transform: translate(-50%, calc(var(--u) * 2));
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  width: min(80%, calc(var(--u) * 120));
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4) calc(var(--u) * 1.6) calc(var(--u) * 1.4);
+  background: rgba(12, 10, 20, 0.94);
+  border: 1px solid #3a3352;
+  border-left: calc(var(--u) * 0.4) solid #c9b6ff;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s, visibility 0s linear 0.2s;
+  cursor: pointer;
+}
+.dialog.on { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); transition: opacity 0.2s, transform 0.2s; }
+.dialog[data-who='dot'] { border-left-color: #ff7ab6; }
+#dlgFace { width: calc(var(--u) * 11); height: calc(var(--u) * 11); flex: none; }
+.dlg-body { position: relative; flex: 1; min-height: calc(var(--u) * 9); }
+#dlgName {
+  display: block;
+  margin-bottom: calc(var(--u) * 0.8);
+  font-size: calc(var(--u) * 1.3);
+  letter-spacing: 0.3em;
+  color: #c9b6ff;
+}
+.dialog[data-who='dot'] #dlgName { color: #ff7ab6; }
+#dlgText {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: calc(var(--u) * 2.6);
+  line-height: 1.3;
+  min-height: 2.6em;
+}
+.dlg-next {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--u) * -0.6);
+  font-size: calc(var(--u) * 1.1);
+  color: var(--mute);
+  animation: dlgPulse 1.2s ease-in-out infinite;
+}
+.dlg-next kbd { height: calc(var(--u) * 2.2); min-width: auto; font-size: calc(var(--u) * 1); }
+@keyframes dlgPulse { 50% { opacity: 0.35; } }
+
+/* Menüde Sıfır */
+.zero-greet {
+  position: absolute;
+  right: calc(var(--u) * 7);
+  bottom: calc(var(--u) * 13);
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--u) * 0.6);
+  max-width: 46%;
+}
+#greetFace {
+  width: calc(var(--u) * 15);
+  height: calc(var(--u) * 15);
+  flex: none;
+  cursor: pointer;
+}
+.greet-bubble {
+  position: relative;
+  margin-bottom: calc(var(--u) * 8);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 1.8);
+  background: rgba(12, 10, 20, 0.9);
+  border: 1px solid #3a3352;
+  min-width: calc(var(--u) * 26);
+}
+.greet-bubble::after {
+  content: '';
+  position: absolute;
+  right: calc(var(--u) * -1.2);
+  bottom: calc(var(--u) * 1.4);
+  border: calc(var(--u) * 0.6) solid transparent;
+  border-left-color: #3a3352;
+}
+.greet-bubble b {
+  display: block;
+  margin-bottom: calc(var(--u) * 0.4);
+  font-size: calc(var(--u) * 1.05);
+  letter-spacing: 0.3em;
+  color: #c9b6ff;
+}
+#greetText {
+  font-family: var(--display);
+  font-size: calc(var(--u) * 1.9);
+  line-height: 1.3;
+  min-height: 1.3em;
+}
+
+.story-link {
+  color: var(--dim);
+  font-size: calc(var(--u) * 1.2);
+  letter-spacing: 0.08em;
+  transition: color 0.15s;
+}
+.story-link:hover, .story-link:focus-visible { color: #c9b6ff; outline: none; }

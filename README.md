@@ -14,6 +14,15 @@ Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 - Yalnızca masaüstü. Telefon ve tabletten girenlere "PC'den gir" ekranı gösterilir.
 - İlerleme ve ayarlar tarayıcıda (`localStorage`) saklanır.
 
+
+## Hikâye
+
+Kare ile dostu Nokta'yı Üçgenler kaçırır. Yolu gösteren tek kişi, süzülen tek gözlü gizemli bir varlık: **Sıfır**.
+Tek bir kuralı vardır: hiçbir şeye güvenme. Ona bile.
+
+Sıfır oyunun anlatıcısıdır: menüde karşılar (yüzüne tıklayınca konuşmaya devam eder), oyun içi bildirimleri o söyler.
+Açılış sahnesi ilk oyunda kendiliğinden oynar, menüden "Hikâyeyi izle" ile tekrar izlenir. Kod: `js/story.js`.
+
 ## Kontroller
 
 | Tuş | İşlev |
@@ -35,6 +44,7 @@ index.html      ekranlar ve HUD
 css/style.css   arayüz
 js/i18n.js      TR / EN metinleri
 js/audio.js     Web Audio ile üretilen sesler
+js/story.js     anlatıcı Sıfır, açılış sahnesi, konuşma kutusu
 js/levels.js    bölüm haritaları (32×18 kare ızgara) ve tuzaklar
 js/game.js      fizik, çizim, ekran akışı
 tools/          otomatik oyuncu ve bölüm çözümleri (yalnızca geliştirme için)
