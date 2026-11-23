@@ -79,11 +79,11 @@
   const stage = $('stage');
 
   // ───────────────────────── Kayıt ─────────────────────────
-  const SAVE_KEY = 'zt.save.v3';
+  const SAVE_KEY = 'zt.save.v4';
   function defaults() {
     return {
       unlocked: 0, cleared: Array(N).fill(false), deaths: 0,
-      muted: false, music: true, radar: false, seenIntro: false,
+      muted: false, music: true, radar: false, seenIntro: false, seenCh: [],
       best: Array(N).fill(null), ldeaths: Array(N).fill(0)
     };
   }
@@ -95,10 +95,27 @@
   function loadSave() {
     try {
       let raw = localStorage.getItem(SAVE_KEY);
-      const migrating = !raw;
-      if (!raw) raw = localStorage.getItem('zt.save.v2'); // eski 8 bölümlük kayıt
+      const migrating = false;
+      // 48 bölümlük eski kayıt: ilerlemeyi bölüm anahtarına göre yeni hikâye sırasına taşı
+      if (!raw) {
+        const old = localStorage.getItem('zt.save.v3');
+        if (old) {
+          const o = JSON.parse(old);
+          const pick = (arr, fill) => ZT.LEVEL_KEYS.map((k) => {
+            const m = /^l(\d+)$/.exec(k);
+            const j = m ? +m[1] - 1 : -1;
+            return Array.isArray(arr) && j >= 0 && arr[j] != null ? arr[j] : fill;
+          });
+          o.cleared = pick(o.cleared, false);
+          o.best = pick(o.best, null);
+          o.ldeaths = pick(o.ldeaths, 0);
+          o.unlocked = 0;
+          raw = JSON.stringify(o);
+        }
+      }
       if (raw) {
         const s = Object.assign(defaults(), JSON.parse(raw));
+        if (!Array.isArray(s.seenCh)) s.seenCh = [];
         s.cleared = fit(s.cleared, false);
         s.best = fit(s.best, null);
         s.ldeaths = fit(s.ldeaths, 0);
@@ -228,6 +245,7 @@
         case 'clone': e.on = false; break;
         case 'window': e.px = e.x * T; e.py = e.y * T; e.pw = e.w * T; e.ph = e.h * T; e.state = 0; e.anim = 0; break;
         case 'decoy': e.px = e.x * T; e.py = (e.y - 1) * T; e.ate = 0; break;
+        case 'cage': e.px = e.x * T; e.py = (e.y - 2) * T; break;
         case 'cp': e.on = false; e.boom = 0; break;
         case 'btn': e.down = false; e.active = false; e.timer = 0; e.sink = 0; break;
         case 'gate': e.k = e.inv ? 1 : 0; e.open = !!e.inv; e.latched = false; e.dk = 0; break;
@@ -285,7 +303,7 @@
       px: d.x * T, py: (d.y - 1) * T,
       runs: d.runs || [], runIdx: 0, runR: d.runR || 2.3, cooldown: 0,
       fakeWin: d.fakeWin || null, faked: false, jokeTimer: 0,
-      locked: !!d.locked, lockMsg: 0
+      locked: !!d.locked, lockMsg: 0, hidden: !!d.hidden
     };
     // Hayalet intikamı: önceki ölüm noktaların bu denemede tuzak olur
     const sx = (L.spawn[0] + 0.5) * T, sy = (L.spawn[1] + 0.5) * T;
@@ -566,11 +584,17 @@
     save.unlocked = Math.min(N - 1, Math.max(save.unlocked, levelIdx + 1));
     persist();
     if (levelIdx < N - 1) {
-      toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', timeNote);
+      // Kafesten (ihanetten) sonra "Nokta yakın" demek sahneyi öldürür: orada sessiz kal
+      if (ZT.LEVEL_KEYS[levelIdx] !== 'f1') toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', timeNote);
       transT = TRANS_T;
       loadLevel(levelIdx + 1, { fresh: true });
-    } else {
+      maybeInterlude(levelIdx);
+    } else if (testing) {
       setScreen('end');
+    } else {
+      // Final: kaçtın. Son sahne, sonra istatistikler
+      setScreen('story');
+      ZT.story.playEnding(() => setScreen('end'));
     }
   }
 
@@ -1161,6 +1185,14 @@
           if (e.ate > 0) e.ate--;
           break;
 
+        case 'cage':
+          // Kafese dokununca: ihanet sahnesi, sonra kaçış bölümü
+          if (!e.fired && !player.dead && overlap({ x: e.px - 10, y: e.py, w: 2 * T + 20, h: 3 * T }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+            e.fired = true;
+            onCage();
+          }
+          break;
+
         case 'clone':
           if (!e.on && world.armT >= 0 && world.t - world.armT >= e.start && world.hist.length > e.delay) {
             e.on = true;
@@ -1197,6 +1229,7 @@
     if (d.cooldown > 0) d.cooldown--;
     if (d.lockMsg > 0) d.lockMsg--;
     if (d.jokeTimer > 0 && --d.jokeTimer === 0) toast(t('ev.joke'), 'trap');
+    if (d.hidden) return false;
 
     const pcx = player.x + player.w / 2, pcy = player.y + player.h / 2;
     const dist = Math.hypot(pcx - (d.px + T / 2), pcy - (d.py + T));
@@ -1819,6 +1852,7 @@
               dashedRect(tx * T, ty * T, T, T, C.amber);
             }
             break;
+          case 'h':
           case '^':
             if (c.oy < H) drawSpikes(tx * T + 4, (ty + 1) * T + c.oy, T - 8, 30, false, false, c.st === 2 ? Math.max(0, 1 - c.oy / 260) : undefined);
             break;
@@ -2035,6 +2069,9 @@
         case 'gflip':
           drawFlipZone(e);
           break;
+        case 'cage':
+          drawCage(e);
+          break;
         case 'decoy':
           drawDoorAt(e.px, e.py, false, save.radar, e.ate);
           break;
@@ -2229,6 +2266,32 @@
     ctx.restore();
   }
 
+  // Nokta'nın kafesi: içinde Nokta, sana bakıyor
+  function drawCage(e) {
+    const x = e.px, y = e.py, w = 2 * T, h = 3 * T;
+    const cx = x + w / 2;
+    const look = Math.sign(player.x + player.w / 2 - cx) || -1;
+    ctx.save();
+    ctx.strokeStyle = '#5a5862';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, y);
+    ctx.stroke();
+    ZT.story.drawDot(ctx, cx, y + h - 44, 30, { t: tick, look, scared: !e.fired });
+    ctx.strokeStyle = '#8a8791';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
+    for (let i = 1; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 4 + (i * (w - 8)) / 5, y + 4);
+      ctx.lineTo(x + 4 + (i * (w - 8)) / 5, y + h - 4);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#8a8791';
+    ctx.fillRect(x - 6, y, w + 12, 8);
+    ctx.restore();
+  }
+
   function drawSign(e) {
     ctx.save();
     ctx.font = '500 17px ' + FONT_MONO;
@@ -2245,17 +2308,20 @@
     ctx.strokeStyle = '#2c2b33';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
-    ctx.fillStyle = C.accent;
+    ctx.fillStyle = e.z ? '#c9b6ff' : C.accent;
     ctx.fillRect(bx, by, 3, bh);
-    ctx.fillStyle = C.ink;
+    ctx.fillStyle = e.z ? '#e6dcff' : C.ink;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, bx + 18, by + bh / 2 + 1);
+    // Sıfır'ın tabelası: üstünde küçük bir Sıfır
+    if (e.z) ZT.story.drawZero(ctx, bx + bw - 6, by - 6, 14, { t: tick, mood: 'calm' });
     ctx.restore();
   }
 
   function drawDoor() {
     const d = world.door;
+    if (d.hidden) return;
     // Çatlak duvarın içindeki gizli kapı, geçit açılana kadar hiç görünmez
     if (!world.secretOpen && cellAt(Math.floor(d.px / T), Math.floor(d.py / T) + 1).k === 'c') return;
     drawDoorAt(d.px, d.py, d.locked, save.radar && (d.runIdx < d.runs.length || (d.fakeWin && !d.faked)));
@@ -2677,6 +2743,30 @@
     transT = TRANS_T;
     loadLevel(idx, { fresh: true });
     setScreen('playing');
+    maybeInterlude(idx);
+  }
+
+  // Bir yerin ilk bölümüne ilk kez girerken Sıfır konuşur (bazen uzaktan Nokta da)
+  let testing = false;
+  function maybeInterlude(idx) {
+    if (testing) return;
+    const ch = ZT.CHAPTERS[ZT.chapterOf(idx)];
+    if (idx !== ch.from || save.seenCh.includes(ch.key)) return;
+    const lines = ZT.story.chapterLines(ch.key);
+    if (!lines || !lines.length) return;
+    save.seenCh.push(ch.key);
+    persist();
+    setScreen('story');
+    ZT.story.say(lines, () => setScreen('playing'));
+  }
+
+  function onCage() {
+    if (testing) { completeLevel(); return; }
+    setScreen('story');
+    ZT.story.playBetrayal(() => {
+      setScreen('playing');
+      completeLevel();
+    });
   }
 
   function firstUnfinished() {
@@ -3055,7 +3145,8 @@
   // index.html?zttest ile açılınca bölümleri kare kare oynatan otomatik testler için.
   if (/[?&]zttest/.test(location.search)) {
     ZT.debug = {
-      load(i) { save = defaults(); save.muted = true; ZT.audio.muted = true; startLevel(i); lastDeath = null; freeze = 0; },
+      // story=true: perde arası, ihanet ve son sahneleri atlanmaz (tarayıcıda hikâye akışını denemek için)
+      load(i, story) { testing = !story; save = defaults(); save.muted = true; ZT.audio.muted = true; startLevel(i); lastDeath = null; freeze = 0; },
       tick(l, r, j) { keys.left = l; keys.right = r; keys.jump = j; step(); },
       state() {
         return {

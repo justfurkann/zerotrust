@@ -45,7 +45,7 @@ module.exports = function createGame(options = {}) {
   };
   env.window = env;
   vm.createContext(env);
-  for (const name of ['i18n', 'levels', 'audio', 'game']) {
+  for (const name of ['i18n', 'levels', 'audio', 'story', 'game']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/' + name + '.js'), 'utf8'), env, { filename: name + '.js' });
   }
   return { ZT: env.ZT, evaluate: (fn, arg) => vm.runInContext('(' + fn.toString() + ')(' + JSON.stringify(arg) + ')', env), elements, saved };
