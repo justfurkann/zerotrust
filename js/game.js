@@ -80,6 +80,9 @@
 
   // ───────────────────────── Kayıt ─────────────────────────
   const SAVE_KEY = 'zt.save.v4';
+  // Kayıtlara bölüm listesi eklenmeden önce yayında olan 36 bölümlük sıra
+  const V4_KEYS = ['l1', 'l2', 'l3', 'l4', 'l5', 'run2', 'l9', 'l10', 'l11', 'l12', 'l13', 'l14', 'l15', 'l16', 'l18', 'paper', 'stamp',
+    'l25', 'l26', 'l27', 'l29', 'l31', 'l32', 'l33', 'l35', 'l36', 'l37', 'l38', 'l40', 'l42', 'l43', 'l44', 'l46', 'l48', 'f1', 'f2'];
   const HINT_START = 3, HINT_MAX = 9;
   function defaults() {
     return {
@@ -87,7 +90,8 @@
       muted: false, music: true, radar: false, seenIntro: false, seenCh: [],
       best: Array(N).fill(null), ldeaths: Array(N).fill(0),
       // İpucu bir kaynak: sayılı, oyun içinde kazanılır. hintStage: bölüm anahtarı → açılan kademe (1 dürtme, 2 tam)
-      hints: HINT_START, hintStage: {}, perfect: {}, earned: {}
+      hints: HINT_START, hintStage: {}, perfect: {}, earned: {},
+      keys: ZT.LEVEL_KEYS.slice()   // dizilerin hangi bölüme ait olduğu: sıra değişse de ilerleme kaymasın
     };
   }
   function fit(arr, fill) {
@@ -113,11 +117,27 @@
           o.best = pick(o.best, null);
           o.ldeaths = pick(o.ldeaths, 0);
           o.unlocked = 0;
+          o.keys = ZT.LEVEL_KEYS.slice();
           raw = JSON.stringify(o);
         }
       }
       if (raw) {
-        const s = Object.assign(defaults(), JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        // Anahtarsız v4 kaydı, anahtar listesi eklenmeden önceki 36'lık sıraya aittir
+        const savedKeys = Array.isArray(parsed.keys) ? parsed.keys : V4_KEYS;
+        if (savedKeys.join() !== ZT.LEVEL_KEYS.join()) {
+          const remap = (arr, fill) => ZT.LEVEL_KEYS.map((k) => {
+            const j = savedKeys.indexOf(k);
+            return Array.isArray(arr) && j >= 0 && arr[j] != null ? arr[j] : fill;
+          });
+          parsed.cleared = remap(parsed.cleared, false);
+          parsed.best = remap(parsed.best, null);
+          parsed.ldeaths = remap(parsed.ldeaths, 0);
+          const u = parsed.unlocked | 0;
+          parsed.unlocked = ZT.LEVEL_KEYS.filter((k) => { const j = savedKeys.indexOf(k); return j >= 0 && j < u; }).length;
+        }
+        parsed.keys = ZT.LEVEL_KEYS.slice();
+        const s = Object.assign(defaults(), parsed);
         if (!Array.isArray(s.seenCh)) s.seenCh = [];
         for (const k of ['hintStage', 'perfect', 'earned']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
         s.hints = Math.max(0, Math.min(HINT_MAX, Number.isFinite(s.hints) ? s.hints | 0 : HINT_START));

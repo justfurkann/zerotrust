@@ -1355,13 +1355,13 @@ window.ZT = window.ZT || {};
   // Her perde Nokta'yı kurtarma yolunda bir yer. Kampanyaya girmeyen bölümler
   // silinmedi, ZT.ARCHIVE'da duruyor; bir bölümü geri almak için buraya anahtarını ekle.
   const STORY = [
-    { key: 'ch1', tint: [200, 255, 61], levels: ['l1', 'l2', 'l3', 'l4', 'l5', 'run2'] },
+    { key: 'ch1', tint: [200, 255, 61], levels: ['l1', 'l2', 'l3', 'l4', 'l5'] },
     { key: 'ch2', tint: [79, 209, 255], levels: ['l9', 'l10', 'l11', 'l12', 'l13', 'l14'] },
-    { key: 'ch3', tint: [167, 139, 250], levels: ['l15', 'l16', 'l18', 'paper', 'stamp'] },
+    { key: 'ch3', tint: [167, 139, 250], levels: ['l15', 'l16', 'l18'] },
     { key: 'ch4', tint: [255, 122, 92], levels: ['l25', 'l26', 'l27', 'l29'] },
     { key: 'ch5', tint: [255, 204, 77], levels: ['l31', 'l32', 'l33', 'l35', 'l36'] },
     { key: 'ch6', tint: [255, 122, 184], levels: ['l37', 'l38', 'l40', 'l42'] },
-    { key: 'ch7', tint: [112, 228, 176], levels: ['l43', 'l44', 'l46', 'l48'] },
+    { key: 'ch7', tint: [112, 228, 176], levels: ['l43', 'l44', 'l46', 'l48', 'run2', 'paper', 'stamp'] },
     { key: 'ch8', tint: [255, 61, 61], levels: ['f1', 'f2'] }
   ];
   const BY_KEY = {};
