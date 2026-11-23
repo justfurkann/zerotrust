@@ -2,6 +2,11 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
+## Yayın
+
+`main`'e her birleştirmede `.github/workflows/pages.yml` oyunu GitHub Pages'e yayınlar: **https://zerotrust.studymode.fun**
+(DNS: studymode.fun Vercel'de; `zerotrust` için `justfurkann.github.io` CNAME kaydı. Alan adı repo ayarlarında: Settings → Pages.)
+
 ## Hikâye
 
 Kare ile en yakın dostu Nokta otururken Üçgen askerleri Nokta'yı kaçırır. Kare onu kurtarmak için yola çıkar.
