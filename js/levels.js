@@ -1198,6 +1198,98 @@ window.ZT = window.ZT || {};
       }
     },
 
+    // ───────────── Yeniden yazılan sınav bölümleri ─────────────
+
+    // Sınır Kapısı'nın sınavı — Koş: zemin arkandan çöker; ilk yerde öğrendiğin her numara
+    // (alçak zıplama, sahte zemin, tuzaklı iniş, yay, görünmez basamak) durmadan, arka arkaya.
+    {
+      key: 'run2',
+      cols: 48,
+      build(b) {
+        b.fill(0, 14, 3, 4, '#');
+        b.fill(3, 14, 25, 1, '=');
+        b.fill(8, 13, 1, 1, '^');
+        // Alçak zıpla: çukurun üstünde görünmez tavan dikeni
+        b.clear(13, 14, 2, 1);
+        b.fill(13, 16, 2, 1, '^');
+        b.fill(12, 11, 4, 1, 'x');
+        // Sahte zemin ve tuzaklı iniş
+        b.fill(19, 14, 2, 1, '~');
+        // Yay ve duvar; duvarın ardındaki iniş dikenle dolar
+        b.fill(28, 14, 20, 4, '#');
+        b.fill(29, 13, 1, 1, 'S');
+        b.fill(31, 9, 2, 5, '#');
+        // Kapı yüksekte, basamak görünmez
+        b.fill(43, 11, 5, 3, '#');
+        b.fill(41, 12, 1, 1, '?');
+        return {
+          spawn: [1, 13],
+          door: { x: 45, y: 10 },
+          ents: [
+            { t: 'chase', x0: 3, x1: 27, trig: [3.6, 1], delay: 26, interval: 9 },
+            { t: 'pop', x: 24, y: 13, w: 1, trig: [21.4, 1] },
+            { t: 'pop', x: 34, y: 13, w: 3, trig: [31, 0, 2, 9] },
+            { t: 'sign', x: 0, y: 13, k: 'run2.s1' }
+          ]
+        };
+      }
+    },
+
+    // Yalan Dairesi — Evrak: pencereden geç, tavana çık, tavanın da tuzakları var,
+    // yere dön; sağdaki kapı seni yer, gerçek çıkış çatlak duvarın içinde.
+    {
+      key: 'paper',
+      cols: 44,
+      build(b) {
+        b.fill(0, 0, 44, 3, '#');
+        b.fill(0, 14, 9, 4, '#');
+        b.fill(17, 14, 27, 4, '#');
+        // Yerde diken tarlası: tavandan geçilir
+        b.fill(21, 13, 12, 1, '^');
+        // Tavanda: aşağı bakan diken ve tavandaki sahte delik
+        b.fill(25, 3, 1, 1, 'v');
+        b.fill(29, 0, 2, 3, '~');
+        // Gerçek çıkış: çatlak duvarın içinde
+        b.fill(41, 3, 3, 6, '#');
+        b.fill(41, 9, 3, 5, 'c');
+        return {
+          spawn: [2, 13],
+          door: { x: 42, y: 13 },
+          ents: [
+            { t: 'window', x: 9, y: 12, w: 7, h: 2, trig: [6.5, 2] },
+            { t: 'gflip', trig: [18, 0, 2, 18] },
+            { t: 'gflip', trig: [33, 0, 2, 18] },
+            { t: 'decoy', x: 38, y: 13 },
+            { t: 'sign', x: 1, y: 13, k: 'paper.s1' }
+          ]
+        };
+      }
+    },
+
+    // Yalan Dairesi'nin sınavı — Mühür: uçurumun üstünde arka arkaya açılan hata pencereleri.
+    // Her pencerenin ×'ine değersen kapanır. Karşı kıyıda iki kapı var; yakındaki seni yer.
+    {
+      key: 'stamp',
+      cols: 40,
+      build(b) {
+        b.fill(0, 14, 8, 4, '#');
+        b.fill(32, 14, 8, 4, '#');
+        b.fill(8, 17, 24, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 38, y: 13 },
+          ents: [
+            { t: 'window', x: 8, y: 12, w: 4, h: 2, trig: [5.5, 2] },
+            { t: 'window', x: 14, y: 10, w: 4, h: 2, trig: [10, 1.5] },
+            { t: 'window', x: 20, y: 12, w: 4, h: 2, trig: [16, 1.5] },
+            { t: 'window', x: 26, y: 11, w: 4, h: 2, trig: [22, 1.5] },
+            { t: 'decoy', x: 35, y: 13 },
+            { t: 'sign', x: 1, y: 13, k: 'stamp.s1' }
+          ]
+        };
+      }
+    },
+
     // ───────────── Final: Taht Odası ─────────────
 
     // F1 — Taht Odası: Nokta'nın kafesi odanın sonunda. Kafese dokununca ihanet sahnesi.
@@ -1263,9 +1355,9 @@ window.ZT = window.ZT || {};
   // Her perde Nokta'yı kurtarma yolunda bir yer. Kampanyaya girmeyen bölümler
   // silinmedi, ZT.ARCHIVE'da duruyor; bir bölümü geri almak için buraya anahtarını ekle.
   const STORY = [
-    { key: 'ch1', tint: [200, 255, 61], levels: ['l1', 'l2', 'l3', 'l4', 'l5', 'l7'] },
+    { key: 'ch1', tint: [200, 255, 61], levels: ['l1', 'l2', 'l3', 'l4', 'l5', 'run2'] },
     { key: 'ch2', tint: [79, 209, 255], levels: ['l9', 'l10', 'l11', 'l12', 'l13', 'l14'] },
-    { key: 'ch3', tint: [167, 139, 250], levels: ['l15', 'l16', 'l18', 'l19', 'l22'] },
+    { key: 'ch3', tint: [167, 139, 250], levels: ['l15', 'l16', 'l18', 'paper', 'stamp'] },
     { key: 'ch4', tint: [255, 122, 92], levels: ['l25', 'l26', 'l27', 'l29'] },
     { key: 'ch5', tint: [255, 204, 77], levels: ['l31', 'l32', 'l33', 'l35', 'l36'] },
     { key: 'ch6', tint: [255, 122, 184], levels: ['l37', 'l38', 'l40', 'l42'] },

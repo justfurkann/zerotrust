@@ -7,6 +7,7 @@
 //   T n            dünya saati n olana kadar bekle   T% [m, a]   saat mod m == a olana kadar
 //   CEIL           tavana inene kadar (ters yerçekimi)
 //   D / RD / LD / RJD n   (taş bölümleri) bilerek öl: verilen tuşlarla ölene kadar devam et, sonra yeniden doğmayı bekle
+// Anahtarı n_ ile başlayan program bir önceki bölümde "kör deneme"dir ve ölmesi beklenir.
 const nodeMode = process.env.ZT_NODE === '1';
 const chromium = nodeMode ? null : require('playwright').chromium;
 const path = require('path');
@@ -20,11 +21,11 @@ const only = process.argv.slice(3);
     await p.goto('file://' + path.resolve(__dirname, '../index.html') + '?zttest');
     await p.waitForTimeout(300);
   }
-  let fail = 0;
+  let fail = 0, lastKey = null;
   const keys = await p.evaluate(() => window.ZT.LEVEL_KEYS);
   for (const [num, prog] of Object.entries(programs)) {
     if (only.length && !only.includes(num)) continue;
-    const idx = keys.indexOf(num);
+    const idx = keys.indexOf(num.startsWith('n_') ? (lastKey || num) : (lastKey = num));
     if (idx < 0) { console.log('SKIP ' + num + ' (arşivde)'); continue; }
     const res = await p.evaluate(({ idx, prog }) => {
       const D = window.ZT.debug;
@@ -74,9 +75,12 @@ const only = process.argv.slice(3);
       for (let k = 0; k < 60; k++) if (tick(false, false, false) === 'done') return { ok: true, log };
       return { ok: false, log, why: 'program ended without reaching the door' };
     }, { idx, prog });
-    console.log((res.ok ? 'PASS' : 'FAIL') + ' ' + num + ' (#' + (idx + 1) + ')' + (res.why ? ' (' + res.why + ')' : ''));
-    if (!res.ok || process.env.V) console.log(res.log.slice(res.ok ? 0 : -8).join('\n'));
-    if (!res.ok) fail++;
+    // n_ ile başlayan programlar "kör deneme"dir: bölüm onları öldürmeli (çok kolay olmadığının kanıtı)
+    const naive = num.startsWith('n_');
+    const good = naive ? !res.ok && res.why === 'died' : res.ok;
+    console.log((good ? 'PASS' : 'FAIL') + ' ' + num + ' (#' + (idx + 1) + ')' + (naive ? ' kör deneme ' + (res.ok ? 'GEÇTİ (bölüm fazla kolay)' : 'öldü') : res.why ? ' (' + res.why + ')' : ''));
+    if (!good || process.env.V) console.log(res.log.slice(good ? 0 : -8).join('\n'));
+    if (!good) fail++;
   }
   if (b) await b.close();
   process.exit(fail ? 1 : 0);
