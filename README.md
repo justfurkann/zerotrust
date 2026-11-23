@@ -2,7 +2,14 @@
 
 Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 
-- 48 bölüm, yedi perde. İlk üç perde tek ekranlık, tek fikirli bölümler; sonraki bölümler öğrendiğini sana karşı kullanır
+## Hikâye
+
+Kare ile en yakın dostu Nokta otururken Üçgen askerleri Nokta'yı kaçırır. Kare onu kurtarmak için yola çıkar.
+Yol boyunca tek rehberi Sıfır'dır: tatlı, gizemli, tek gözlü bir küre. Oyundaki bütün sözleri o söyler ve çoğu zaman yalan söyler.
+Yolculuk sekiz yerden geçer (Sınır Kapısı, Eşyalar Kasabası, Yalan Dairesi, Fabrika, Taş Bahçesi, Saat Kulesi, Gözetleme Kulesi, Taht Odası).
+Her yere ilk girişte Sıfır konuşur, bazen uzaktan Nokta'nın sesi gelir. Sonunu söylemeyelim; oyunun adı bir ipucu.
+
+- 36 bölümlük hikâye yolculuğu, sekiz yer. İlk yerler tek ekranlık, tek fikirli bölümler; sonrakiler öğrendiğini sana karşı kullanır
 - Perde IV uzun, çok aşamalı bölümlerdir: kamera kayar, kayıt noktaları vardır, düğmeler kapı açar, lazerlerin ritmi, hareketli platformlar ve gidişin bir de dönüşü olur
 - Perde V'te ölüm bir kaynaktır: son üç ölümün taşa döner. Taşlardan köprü kurar, düğmeyi taşınla basılı tutarsın
 - Perde VI'da her zıplayış pembe ve mavi blokları yer değiştirir: hangi bloğun katı olacağı kaç kez zıpladığına bağlıdır
@@ -55,14 +62,19 @@ Hareket ivmeli; zıplamada coyote time, zıplama tamponu ve değişken yüksekli
 
 ## Bölüm yazmak
 
-Bölümler `js/levels.js` içinde küçük bir çizim fonksiyonuyla tanımlanır:
+Bölümler `js/levels.js` içinde anahtarla (`l1`, `l25`, `f1` …) tanımlanır. Hangi bölümün hangi yerde, hangi sırayla oynanacağını
+dosyanın sonundaki `STORY` listesi belirler; listede olmayan bölümler `ZT.ARCHIVE`'dadır (silinmez, anahtarını `STORY`'ye eklemek geri getirir).
+Kayıt bölüm anahtarına göre taşındığı için sırayı değiştirmek oyuncunun ilerlemesini bozmaz.
+Perde arası konuşmalar `js/i18n.js` içinde `chapter.chN` anahtarlarındadır (`"zero:smug|metin"` biçiminde: kim, yüz ifadesi, söz).
+
+Her bölüm küçük bir çizim fonksiyonuyla kurulur:
 
 ```js
 b.fill(0, 14, 32, 4, '#');   // zemin
 b.fill(13, 16, 4, 1, '^');   // diken
 ```
 
-Kare tipleri: `#` zemin, `~` sahte zemin, `=` çöken kare, `f` sahte çöken kare, `w` zayıf zemin, `c` çatlak duvar (gizli geçit), `?` gizli blok, `x` görünmez tavan dikeni, `^` / `v` diken, `S` yay.
+Kare tipleri: `#` zemin, `h` zararsız sahte diken, `~` sahte zemin, `=` çöken kare, `f` sahte çöken kare, `w` zayıf zemin, `c` çatlak duvar (gizli geçit), `?` gizli blok, `x` görünmez tavan dikeni, `^` / `v` diken, `S` yay.
 Tuzaklar (`trapdoor`, `pop`, `drop`, `slide`, `invert`, `chase`) oyuncunun merkezi tetik alanına girince çalışır.
 Diğer nesneler: `key` (kovalayan anahtar + kilitli kapı), `shy` (zıplayınca kaçan platform), `ceil` (ilerlemezsen inen tavan),
 `cube` (devleştiren küp), `hud` (düşen bölüm başlığı), `fakeGhost` (radarın sahte izi), `clone` (bir saniye arkandan gelen gölge),
@@ -93,6 +105,8 @@ ZT_NODE=1 node tools/playtest.js tools/solutions.js
 ```
 
 Taş bölümlerinde `RD` / `D` adımı "burada bilerek öl" demektir; araç ölümü bekler ve yeniden doğmayı bekleyip devam eder.
+Çözümler bölüm anahtarıyla yazılır (`node tools/playtest.js tools/solutions.js l25 f2`); arşivdeki bölümler atlanır.
+`node tools/checks.js` tarayıcısız bütünlük denetimlerini (çeviriler, kayıt taşıma, kararlılık) çalıştırır.
 Yeni bir bölüm yazdığında çözümünü `tools/solutions.js` içine ekle; bölüm gerçekten bitirilebiliyor mu, böyle anlaşılır.
 
 

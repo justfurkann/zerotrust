@@ -168,7 +168,23 @@ window.ZT = window.ZT || {};
     const blink = (Math.floor(time) % 180) < 6;
     const lx = (o.look || 0) * r * 0.15;
     g.fillStyle = '#2a0d1c';
-    if (o.scared) {
+    if (o.evil) {
+      // Gerçek yüzü: kırmızı parlayan gözler, geniş sırıtış
+      g.shadowColor = 'rgba(255,40,40,0.9)';
+      g.shadowBlur = r * 0.5;
+      g.fillStyle = '#ff2a2a';
+      g.beginPath(); g.moveTo(cx - r * 0.5 + lx, cy - r * 0.32); g.lineTo(cx - r * 0.18 + lx, cy - r * 0.14); g.lineTo(cx - r * 0.5 + lx, cy - r * 0.08); g.fill();
+      g.beginPath(); g.moveTo(cx + r * 0.5 + lx, cy - r * 0.32); g.lineTo(cx + r * 0.18 + lx, cy - r * 0.14); g.lineTo(cx + r * 0.5 + lx, cy - r * 0.08); g.fill();
+      g.shadowBlur = 0;
+      g.fillStyle = '#2a0d1c';
+      g.beginPath();
+      g.moveTo(cx - r * 0.45 + lx, cy + r * 0.12);
+      g.quadraticCurveTo(cx + lx, cy + r * 0.62, cx + r * 0.45 + lx, cy + r * 0.12);
+      g.closePath();
+      g.fill();
+      g.fillStyle = '#fff';
+      for (let i = 0; i < 4; i++) g.fillRect(cx - r * 0.3 + lx + i * r * 0.17, cy + r * 0.14, r * 0.09, r * 0.1);
+    } else if (o.scared) {
       g.beginPath(); g.arc(cx - r * 0.32 + lx, cy - r * 0.15, r * 0.17, 0, Math.PI * 2); g.fill();
       g.beginPath(); g.arc(cx + r * 0.32 + lx, cy - r * 0.15, r * 0.17, 0, Math.PI * 2); g.fill();
       g.beginPath(); g.ellipse(cx + lx, cy + r * 0.35, r * 0.12, r * 0.16, 0, 0, Math.PI * 2); g.fill();
@@ -261,8 +277,17 @@ window.ZT = window.ZT || {};
   const $ = (id) => document.getElementById(id);
   const dlg = { el: null, face: null, name: null, text: null, lines: [], i: 0, shown: 0, full: '', onDone: null, open: false, speaker: 'zero', mood: 'calm', talkT: 0 };
 
+  // Satırlar ya {who, mood, text} nesnesi ya da "who:mood|metin" biçiminde dize olabilir
+  function parseLine(L) {
+    if (typeof L !== 'string') return L;
+    const bar = L.indexOf('|');
+    if (bar < 0) return { who: 'zero', mood: 'calm', text: L };
+    const [who, mood] = L.slice(0, bar).split(':');
+    return { who: who || 'zero', mood: mood || 'calm', text: L.slice(bar + 1) };
+  }
+
   function say(lines, onDone) {
-    dlg.lines = lines;
+    dlg.lines = lines.map(parseLine);
     dlg.i = 0;
     dlg.onDone = onDone || null;
     dlg.open = true;
@@ -311,7 +336,7 @@ window.ZT = window.ZT || {};
     const g = dlg.face.getContext('2d');
     g.clearRect(0, 0, 160, 160);
     const talking = dlg.shown < dlg.full.length;
-    if (dlg.speaker === 'dot') drawDot(g, 80, 86, 46, { t: frame, squash: talking && frame % 16 < 8 });
+    if (dlg.speaker === 'dot') drawDot(g, 80, 86, 46, { t: frame, squash: talking && frame % 16 < 8, evil: dlg.mood === 'evil' });
     else drawZero(g, 80, 92, 46, { t: frame, talk: talking, mood: dlg.mood });
   }
 
@@ -320,6 +345,7 @@ window.ZT = window.ZT || {};
   const GROUND = 840;
 
   function playIntro(onDone) {
+    cine.scene = 'intro';
     cine.on = true;
     cine.t = 0;
     cine.phase = 'play';
@@ -493,6 +519,8 @@ window.ZT = window.ZT || {};
 
   function tickIntro() {
     if (!cine.on) return;
+    if (cine.scene === 'betray') { tickBetray(); return; }
+    if (cine.scene === 'end') { tickEnding(); return; }
     if (cine.phase === 'play') {
       cine.t++;
       if (cine.t === T_RUMBLE) ZT.audio.voice('rumble');
@@ -511,6 +539,199 @@ window.ZT = window.ZT || {};
       if (cine.fade >= 1) endIntro();
     }
     drawIntro();
+  }
+
+  // ───────────────────────── İhanet sahnesi ─────────────────────────
+  // Taht odası. Kafes açılır, Nokta sevinir... sonra gözleri kırmızıya döner.
+  function startScene(name, onDone) {
+    cine.scene = name;
+    cine.on = true;
+    cine.t = 0;
+    cine.phase = 'play';
+    cine.fade = 0;
+    cine.k = 0;
+    cine.onDone = onDone;
+    cine.dust = Array.from({ length: 40 }, (_, i) => ({ x: (i * 211) % 1920, y: (i * 137) % 900, s: 1 + (i % 3) }));
+    cine.el.classList.add('on');
+    $('cineSkip').classList.add('on');
+  }
+
+  function playBetrayal(onDone) { startScene('betray', onDone); }
+  function playEnding(onDone) { startScene('end', onDone); }
+
+  function tickBetray() {
+    const c = cine;
+    c.t++;
+    if (c.phase === 'play' && c.t === 120) {
+      c.phase = 'hello';
+      say(t('story.betray1'), () => { c.phase = 'turn'; c.k = 0; ZT.audio.voice('grab'); });
+    } else if (c.phase === 'turn') {
+      c.k++;
+      if (c.k === 100) {
+        c.phase = 'reveal';
+        say(t('story.betray2'), () => { c.phase = 'fall'; c.k = 0; ZT.audio.voice('rumble'); });
+      }
+    } else if (c.phase === 'fall') {
+      c.k++;
+      if (c.k === 70) ZT.audio.voice('glitch');
+      if (c.k === 110) {
+        c.phase = 'zero';
+        say(t('story.betray3'), () => { c.phase = 'out'; });
+      }
+    } else if (c.phase === 'out') {
+      c.fade = Math.min(1, c.fade + 0.03);
+      if (c.fade >= 1) endIntro();
+    }
+    drawBetray();
+  }
+
+  function drawBetray() {
+    const g = cine.g, f = cine.t, c = cine;
+    const W = 1920, H = 1080;
+    const evil = c.phase === 'turn' ? ease(c.k / 60) : (c.phase === 'reveal' || c.phase === 'fall' || c.phase === 'zero' || c.phase === 'out') ? 1 : 0;
+    const falling = c.phase === 'fall' || c.phase === 'zero' || c.phase === 'out';
+    const shake = falling && c.k < 40 ? (Math.random() - 0.5) * 14 : 0;
+    g.save();
+    g.translate(shake, 0);
+    // Taht odası
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, `rgb(${18 + 40 * evil},8,12)`);
+    sky.addColorStop(1, '#060607');
+    g.fillStyle = sky;
+    g.fillRect(-20, -20, W + 40, H + 40);
+    // Sütunlar
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle = 'rgba(255,255,255,0.03)';
+      g.fillRect(140 + i * 330, 100, 70, GROUND - 100);
+    }
+    // Zemin (Kare'nin altı açılır)
+    const gapX = 640, gapW = 220;
+    const open = falling ? ease(c.k / 20) : 0;
+    g.fillStyle = '#151519';
+    g.fillRect(-20, GROUND, gapX + 20, H);
+    g.fillRect(gapX + gapW * open, GROUND, W, H);
+    g.fillStyle = C.ink;
+    g.fillRect(-20, GROUND, gapX + 20, 4);
+    g.fillRect(gapX + gapW * open, GROUND, W, 4);
+    if (!falling) { g.fillRect(gapX, GROUND, gapW, 4); g.fillStyle = '#151519'; g.fillRect(gapX, GROUND + 4, gapW, H); }
+
+    // Kare
+    let kx = lerp(380, 720, ease(f / 90)), ky = GROUND - 48;
+    if (falling) ky = GROUND - 48 + Math.max(0, c.k - 15) * Math.max(0, c.k - 15) * 0.6;
+    if (ky < H + 100) drawSquare(g, kx, ky, 40, { wide: evil > 0.5 || falling, facing: 1 });
+
+    // Kafes ve Nokta
+    const cageX = 900, cageY = GROUND - 180;
+    const doorUp = ease((f - 70) / 30);
+    let dx = 960, dy = GROUND - 44;
+    if (f > 90) dx = lerp(960, 900, ease((f - 90) / 30));
+    if (f < 80) dy = GROUND - 44 - 0; else if (f < 120) dy = GROUND - 44 - Math.sin(((f - 80) / 40) * Math.PI) * 70;
+    g.strokeStyle = '#8a8791';
+    g.lineWidth = 6;
+    g.strokeRect(cageX, cageY - 60 * doorUp, 120, 180);
+    for (let i = 1; i < 5; i++) {
+      g.beginPath();
+      g.moveTo(cageX + i * 24, cageY - 60 * doorUp);
+      g.lineTo(cageX + i * 24, cageY + 180 - 60 * doorUp);
+      g.stroke();
+    }
+    // Üçgenler Nokta'nın arkasında belirir ve eğilir
+    if (evil > 0) {
+      for (let i = 0; i < 6; i++) {
+        const tx = 1060 + i * 120, ty = GROUND - 40 - (i % 2) * 140;
+        g.globalAlpha = evil;
+        drawTri(g, tx, ty + 10 * Math.sin(f * 0.05 + i), 80, { rot: -0.25 * evil, look: -1 });
+      }
+      g.globalAlpha = 1;
+    }
+    drawDot(g, dx, dy, 36, { t: f, look: -1, evil: evil > 0.6, squash: f > 80 && f < 120 });
+    if (f > 95 && f < 160) drawHeart(g, dx, dy - 80 - (f - 95), 20, 1 - (f - 95) / 65);
+
+    // Kırmızı ton
+    if (evil > 0) { g.fillStyle = `rgba(255,20,20,${0.14 * evil})`; g.fillRect(-20, -20, W + 40, H + 40); }
+
+    // Düşerken Sıfır belirir
+    if (falling && c.k > 70) {
+      const k = ease((c.k - 70) / 40);
+      g.globalAlpha = k;
+      drawZero(g, 760, 420, 64, { t: f, talk: dlg.open && dlg.shown < dlg.full.length, mood: dlg.open ? dlg.mood : 'wide', lookY: 0.6, glitch: k < 1 });
+      g.globalAlpha = 1;
+    }
+    g.fillStyle = '#000';
+    g.fillRect(-20, -20, W + 40, 100);
+    g.fillRect(-20, H - 80, W + 40, 100);
+    g.restore();
+    if (c.fade > 0) { g.fillStyle = `rgba(6,6,7,${c.fade})`; g.fillRect(0, 0, W, H); }
+  }
+
+  // ───────────────────────── Son sahne ─────────────────────────
+  // Şafak. Kare yere oturmuş. Yanında Sıfır.
+  function tickEnding() {
+    const c = cine;
+    c.t++;
+    if (c.phase === 'play' && c.t === 100) {
+      c.phase = 'talk';
+      say(t('story.ending'), () => { c.phase = 'title'; c.k = 0; });
+    } else if (c.phase === 'title') {
+      c.k++;
+      if (c.k > 420) c.phase = 'out';
+    } else if (c.phase === 'out') {
+      c.fade = Math.min(1, c.fade + 0.025);
+      if (c.fade >= 1) endIntro();
+    }
+    drawEnding();
+  }
+
+  function drawEnding() {
+    const g = cine.g, f = cine.t, c = cine;
+    const W = 1920, H = 1080;
+    const sky = g.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, '#120f24');
+    sky.addColorStop(0.6, '#3a2140');
+    sky.addColorStop(1, '#ff8a5c');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, W, H);
+    // Güneş doğuyor
+    const sunY = lerp(GROUND + 60, GROUND - 120, ease(f / 600));
+    const sun = g.createRadialGradient(1300, sunY, 10, 1300, sunY, 260);
+    sun.addColorStop(0, 'rgba(255,220,160,0.95)');
+    sun.addColorStop(0.3, 'rgba(255,170,110,0.5)');
+    sun.addColorStop(1, 'rgba(255,140,90,0)');
+    g.fillStyle = sun;
+    g.fillRect(0, 0, W, GROUND);
+    g.fillStyle = '#0e0d14';
+    g.fillRect(0, GROUND, W, H);
+    g.fillStyle = 'rgba(255,200,160,0.5)';
+    g.fillRect(0, GROUND, W, 3);
+    drawSquare(g, 820, GROUND - 40, 40, { facing: 1 });   // oturmuş: biraz basık
+    drawZero(g, 1010, 700 + Math.sin(f * 0.04) * 8, 46, {
+      t: f, talk: dlg.open && dlg.shown < dlg.full.length, mood: dlg.open ? dlg.mood : 'calm', lookX: -0.7, lookY: 0.4
+    });
+    if (c.phase === 'title' || c.phase === 'out') {
+      const k = ease(c.k / 120);
+      g.fillStyle = `rgba(6,6,7,${0.92 * k})`;
+      g.fillRect(0, 0, W, H);
+      g.globalAlpha = k;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillStyle = '#ece8df';
+      g.font = '700 150px "Space Grotesk", system-ui';
+      g.fillText('ZERO TRUST', W / 2, H / 2 - 140);
+      g.font = '500 30px "JetBrains Mono", monospace';
+      g.fillStyle = '#c9b6ff';
+      g.fillText(t('story.theEnd'), W / 2, H / 2 - 20);
+      g.fillStyle = '#8a8791';
+      g.font = '400 22px "JetBrains Mono", monospace';
+      g.fillText(t('story.thanks'), W / 2, H / 2 + 40);
+      g.globalAlpha = 1;
+    }
+    if (c.fade > 0) { g.fillStyle = `rgba(6,6,7,${c.fade})`; g.fillRect(0, 0, W, H); }
+  }
+
+  // Perde arası konuşmaları (i18n: chapter.chN)
+  function chapterLines(key) {
+    const lines = t('chapter.' + key);
+    return Array.isArray(lines) ? lines : null;
   }
 
   // ───────────────────────── Menüde karşılama ─────────────────────────
@@ -612,13 +833,14 @@ window.ZT = window.ZT || {};
   ZT.story = {
     init,
     drawZero, drawDot, drawSquare, drawTri,
-    say, playIntro, setGreeting, onToast,
+    say, playIntro, playBetrayal, playEnding, chapterLines, setGreeting, onToast,
     active: () => cine.on || dlg.open,
     // Hikâye açıkken tuşlar buraya gelir; true dönerse oyun tuşu görmez
     key(e) {
       if (!cine.on && !dlg.open) return false;
       const c = e.code;
       if (c === 'Escape' && cine.on) { endIntro(); return true; }
+      if (cine.on && cine.phase === 'title' && !e.repeat && (c === 'Space' || c === 'Enter')) { cine.phase = 'out'; e.preventDefault(); return true; }
       if (!e.repeat && (c === 'Space' || c === 'Enter' || c === 'KeyW' || c === 'ArrowUp')) advance();
       e.preventDefault();
       return true;

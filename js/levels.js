@@ -11,6 +11,7 @@
  *   ^  diken (yukarı)   v  diken (aşağı)
  *   x  görünmez tavan dikeni (çarpınca belirir)
  *   S  yay
+ *   h  zararsız sahte diken (diken gibi görünür, öldürmez)
  *   w  zayıf zemin (sadece devken kırılır)
  *   c  çatlak duvar (sağlam görünür, içinden geçilir; gizli geçit)
  *
@@ -1197,31 +1198,104 @@ window.ZT = window.ZT || {};
       }
     },
 
+    // ───────────── Final: Taht Odası ─────────────
+
+    // F1 — Taht Odası: Nokta'nın kafesi odanın sonunda. Kafese dokununca ihanet sahnesi.
+    {
+      key: 'f1',
+      cols: 48,
+      build(b) {
+        b.fill(0, 14, 48, 4, '#');
+        b.fill(0, 0, 48, 2, '#');
+        b.fill(14, 14, 3, 1, '~');
+        b.clear(14, 15, 3, 1);
+        b.fill(14, 16, 3, 1, '^');
+        b.fill(28, 13, 1, 1, '^');
+        return {
+          spawn: [2, 13],
+          door: { x: 46, y: 13, hidden: true },
+          ents: [
+            { t: 'sign', x: 3, y: 13, k: 'f1.s1' },
+            { t: 'pop', x: 9, y: 13, w: 1, trig: [7.4, 1] },
+            { t: 'drop', x: 23, y: 2, w: 1, h: 1, trig: [19.6, 0.6] },
+            { t: 'slide', x: 38, y: 13, to: 32, back: 41, speed: 7, trig: [33, 1] },
+            { t: 'cage', x: 43, y: 13 }
+          ]
+        };
+      }
+    },
+
+    // F2 — Kaçış: zemin arkandan çöküyor. Mor tabelalar Sıfır'ın ve ilk kez doğru söylüyor.
+    // Üstten git (alt zemin sahte). Dikenler sahte, zıplama (üstte görünmez diken var).
+    // Yakındaki kapı değil, uzaktaki gerçek.
+    {
+      key: 'f2',
+      cols: 72,
+      build(b) {
+        b.fill(0, 14, 3, 4, '#');
+        b.fill(3, 14, 69, 1, '=');
+        // Çatal 1: alt zemin sahte, üst yol gerçek
+        b.fill(16, 14, 7, 1, '~');
+        b.fill(14, 12, 10, 1, '=');
+        // Çatal 2: zararsız sahte dikenler, üstlerinde görünmez tavan dikenleri
+        b.fill(36, 13, 4, 1, 'h');
+        b.fill(35, 11, 6, 1, 'x');
+        // Çıkışın önündeki zemin sağlam
+        b.fill(64, 14, 8, 4, '#');
+        return {
+          spawn: [1, 13],
+          door: { x: 70, y: 13 },
+          ents: [
+            { t: 'chase', x0: 3, x1: 63, trig: [3.6, 1], delay: 40, interval: 10 },
+            { t: 'sign', x: 6, y: 13, k: 'f2.s1', z: true },
+            { t: 'sign', x: 27, y: 13, k: 'f2.s2', z: true },
+            { t: 'sign', x: 55, y: 13, k: 'f2.s3', z: true },
+            { t: 'decoy', x: 66, y: 13 }
+          ]
+        };
+      }
+    }
   ];
 
   ZT.COLS = COLS;
   ZT.ROWS = ROWS;
-  ZT.LEVEL_COUNT = LEVELS.length;
-  ZT.LEVEL_KEYS = LEVELS.map((l) => l.key);
+  // ───────────── Hikâye yolculuğu ─────────────
+  // Her perde Nokta'yı kurtarma yolunda bir yer. Kampanyaya girmeyen bölümler
+  // silinmedi, ZT.ARCHIVE'da duruyor; bir bölümü geri almak için buraya anahtarını ekle.
+  const STORY = [
+    { key: 'ch1', tint: [200, 255, 61], levels: ['l1', 'l2', 'l3', 'l4', 'l5', 'l7'] },
+    { key: 'ch2', tint: [79, 209, 255], levels: ['l9', 'l10', 'l11', 'l12', 'l13', 'l14'] },
+    { key: 'ch3', tint: [167, 139, 250], levels: ['l15', 'l16', 'l18', 'l19', 'l22'] },
+    { key: 'ch4', tint: [255, 122, 92], levels: ['l25', 'l26', 'l27', 'l29'] },
+    { key: 'ch5', tint: [255, 204, 77], levels: ['l31', 'l32', 'l33', 'l35', 'l36'] },
+    { key: 'ch6', tint: [255, 122, 184], levels: ['l37', 'l38', 'l40', 'l42'] },
+    { key: 'ch7', tint: [112, 228, 176], levels: ['l43', 'l44', 'l46', 'l48'] },
+    { key: 'ch8', tint: [255, 61, 61], levels: ['f1', 'f2'] }
+  ];
+  const BY_KEY = {};
+  for (const l of LEVELS) BY_KEY[l.key] = l;
+
+  ZT.LEVEL_KEYS = STORY.flatMap((c) => c.levels);
+  ZT.LEVEL_COUNT = ZT.LEVEL_KEYS.length;
+  ZT.ALL_LEVEL_KEYS = LEVELS.map((l) => l.key);
+  ZT.ARCHIVE = ZT.ALL_LEVEL_KEYS.filter((k) => !ZT.LEVEL_KEYS.includes(k));
 
   // Perdeler: bölüm seçiminde gruplama ve sahnenin arka plan tonu
-  ZT.CHAPTERS = [
-    { key: 'ch1', from: 0, to: 7, tint: [200, 255, 61] },
-    { key: 'ch2', from: 8, to: 15, tint: [79, 209, 255] },
-    { key: 'ch3', from: 16, to: 23, tint: [167, 139, 250] },
-    { key: 'ch4', from: 24, to: 29, tint: [255, 122, 92] },
-    { key: 'ch5', from: 30, to: 35, tint: [255, 204, 77] },
-    { key: 'ch6', from: 36, to: 41, tint: [255, 122, 184] },
-    { key: 'ch7', from: 42, to: 47, tint: [112, 228, 176] }
-  ];
+  let at = 0;
+  ZT.CHAPTERS = STORY.map((c) => {
+    const ch = { key: c.key, from: at, to: at + c.levels.length - 1, tint: c.tint };
+    at += c.levels.length;
+    return ch;
+  });
   ZT.chapterOf = (idx) => Math.max(0, ZT.CHAPTERS.findIndex((c) => idx >= c.from && idx <= c.to));
 
-  ZT.buildLevel = function (idx) {
-    const def = LEVELS[idx];
+  ZT.buildLevelByKey = function (key) {
+    const def = BY_KEY[key];
     const cols = def.cols || COLS;
     const b = builder(cols);
     const meta = def.build(b);
     return { key: def.key, cols, chars: b.g, spawn: meta.spawn, door: meta.door, ents: meta.ents };
   };
+  ZT.buildLevel = (idx) => ZT.buildLevelByKey(ZT.LEVEL_KEYS[idx]);
 })(window.ZT);
 

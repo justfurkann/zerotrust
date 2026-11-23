@@ -1,5 +1,5 @@
 // Bölümleri kare kare oynatan otomatik oyuncu.
-// Kullanım: node tools/playtest.js tools/solutions.js [bölüm no ...]   (Playwright gerekir; V=1 adım adım döküm verir)
+// Kullanım: node tools/playtest.js tools/solutions.js [bölüm anahtarı ...]   (ör. l25 f2; arşivdeki bölümler atlanır)   (Playwright gerekir; V=1 adım adım döküm verir)
 // Program adımları: [op, arg]
 //   R/L/W n        n tick sağa / sola / bekle        RJ/LJ/J n   zıplamayı n tick basılı tut
 //   R> x / L< x    merkez x karesini geçene kadar    RJ> x / LJ< x  zıplayarak (havada) x'e kadar
@@ -11,7 +11,7 @@ const nodeMode = process.env.ZT_NODE === '1';
 const chromium = nodeMode ? null : require('playwright').chromium;
 const path = require('path');
 const programs = require(path.resolve(process.argv[2]));
-const only = process.argv.slice(3).map(Number);
+const only = process.argv.slice(3);
 (async () => {
   const b = nodeMode ? null : await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const p = nodeMode ? require('./node-env')() : await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -21,8 +21,11 @@ const only = process.argv.slice(3).map(Number);
     await p.waitForTimeout(300);
   }
   let fail = 0;
+  const keys = await p.evaluate(() => window.ZT.LEVEL_KEYS);
   for (const [num, prog] of Object.entries(programs)) {
-    if (only.length && !only.includes(+num)) continue;
+    if (only.length && !only.includes(num)) continue;
+    const idx = keys.indexOf(num);
+    if (idx < 0) { console.log('SKIP ' + num + ' (arşivde)'); continue; }
     const res = await p.evaluate(({ idx, prog }) => {
       const D = window.ZT.debug;
       D.load(idx);
@@ -70,8 +73,8 @@ const only = process.argv.slice(3).map(Number);
       }
       for (let k = 0; k < 60; k++) if (tick(false, false, false) === 'done') return { ok: true, log };
       return { ok: false, log, why: 'program ended without reaching the door' };
-    }, { idx: +num - 1, prog });
-    console.log((res.ok ? 'PASS' : 'FAIL') + ' level ' + num + (res.why ? ' (' + res.why + ')' : ''));
+    }, { idx, prog });
+    console.log((res.ok ? 'PASS' : 'FAIL') + ' ' + num + ' (#' + (idx + 1) + ')' + (res.why ? ' (' + res.why + ')' : ''));
     if (!res.ok || process.env.V) console.log(res.log.slice(res.ok ? 0 : -8).join('\n'));
     if (!res.ok) fail++;
   }
