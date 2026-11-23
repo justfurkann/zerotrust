@@ -99,65 +99,107 @@
     if (Array.isArray(arr)) for (let i = 0; i < Math.min(N, arr.length); i++) out[i] = arr[i];
     return out;
   }
-  function loadSave() {
-    try {
-      let raw = localStorage.getItem(SAVE_KEY);
-      const migrating = false;
+  // Ham kayıt metnini (v3 ya da v4) bugünkü bölüm sırasına göre düzenlenmiş kayda çevirir
+  function normalizeSave(raw, isV3) {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (isV3) {
       // 48 bölümlük eski kayıt: ilerlemeyi bölüm anahtarına göre yeni hikâye sırasına taşı
-      if (!raw) {
+      const pick = (arr, fill) => ZT.LEVEL_KEYS.map((k) => {
+        const m = /^l(\d+)$/.exec(k);
+        const j = m ? +m[1] - 1 : -1;
+        return Array.isArray(arr) && j >= 0 && arr[j] != null ? arr[j] : fill;
+      });
+      parsed.cleared = pick(parsed.cleared, false);
+      parsed.best = pick(parsed.best, null);
+      parsed.ldeaths = pick(parsed.ldeaths, 0);
+      parsed.unlocked = 0;
+      parsed.keys = ZT.LEVEL_KEYS.slice();
+    }
+    // Anahtarsız v4 kaydı, anahtar listesi eklenmeden önceki 36'lık sıraya aittir
+    const savedKeys = Array.isArray(parsed.keys) ? parsed.keys : V4_KEYS;
+    if (savedKeys.join() !== ZT.LEVEL_KEYS.join()) {
+      const remap = (arr, fill) => ZT.LEVEL_KEYS.map((k) => {
+        const j = savedKeys.indexOf(k);
+        return Array.isArray(arr) && j >= 0 && arr[j] != null ? arr[j] : fill;
+      });
+      parsed.cleared = remap(parsed.cleared, false);
+      parsed.best = remap(parsed.best, null);
+      parsed.ldeaths = remap(parsed.ldeaths, 0);
+      const u = parsed.unlocked | 0;
+      parsed.unlocked = ZT.LEVEL_KEYS.filter((k) => { const j = savedKeys.indexOf(k); return j >= 0 && j < u; }).length;
+    }
+    parsed.keys = ZT.LEVEL_KEYS.slice();
+    const s = Object.assign(defaults(), parsed);
+    if (!Array.isArray(s.seenCh)) s.seenCh = [];
+    for (const k of ['hintStage', 'perfect', 'earned']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
+    s.hints = Math.max(0, Math.min(HINT_MAX, Number.isFinite(s.hints) ? s.hints | 0 : HINT_START));
+    s.deaths = Math.max(0, s.deaths | 0);
+    s.cleared = fit(s.cleared, false).map(Boolean);
+    s.best = fit(s.best, null).map((v) => (Number.isFinite(v) && v > 0 ? v : null));
+    s.ldeaths = fit(s.ldeaths, 0).map((v) => Math.max(0, v | 0));
+    s.unlocked = Math.max(0, Math.min(N - 1, s.unlocked | 0));
+    // Yeni bölümler eklendiyse, son geçilen bölümün devamı açık olsun
+    const lastCleared = s.cleared.lastIndexOf(true);
+    if (lastCleared >= 0) s.unlocked = Math.max(s.unlocked, Math.min(N - 1, lastCleared + 1));
+    return s;
+  }
+
+  // İki kaydı birleştirir: hangisinde daha çok ilerleme varsa o kazanır, hiçbir şey kaybolmaz
+  function mergeSaves(a, b) {
+    const m = defaults();
+    m.cleared = a.cleared.map((v, i) => v || b.cleared[i]);
+    m.best = a.best.map((v, i) => (v == null ? b.best[i] : b.best[i] == null ? v : Math.min(v, b.best[i])));
+    m.ldeaths = a.ldeaths.map((v, i) => Math.max(v, b.ldeaths[i]));
+    m.deaths = Math.max(a.deaths, b.deaths);
+    m.unlocked = Math.max(a.unlocked, b.unlocked);
+    m.seenIntro = a.seenIntro || b.seenIntro;
+    m.seenCh = Array.from(new Set([...a.seenCh, ...b.seenCh]));
+    m.hints = Math.max(a.hints, b.hints);
+    for (const k of ['perfect', 'earned']) m[k] = Object.assign({}, b[k], a[k]);
+    m.hintStage = Object.assign({}, b.hintStage);
+    for (const k in a.hintStage) m.hintStage[k] = Math.max(a.hintStage[k] || 0, m.hintStage[k] || 0);
+    for (const k of ['muted', 'music', 'radar']) m[k] = a[k];
+    return m;
+  }
+
+  // Eski adresten (netlify.app) taşınan kayıt: #import=<base64url JSON {k, s}>
+  function readImport() {
+    try {
+      const m = /[#&]import=([A-Za-z0-9_-]{1,20000})/.exec(location.hash || '');
+      if (!m) return null;
+      const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+      const json = decodeURIComponent(Array.from(atob(b64), (c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''));
+      const box = JSON.parse(json);
+      if (!box || typeof box.s !== 'string') return null;
+      return normalizeSave(box.s, box.k === 'zt.save.v3');
+    } catch (e) { return null; }
+  }
+
+  let imported = false;
+  function loadSave() {
+    let local = null, inc = null;
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) local = normalizeSave(raw, false);
+      else {
         const old = localStorage.getItem('zt.save.v3');
-        if (old) {
-          const o = JSON.parse(old);
-          const pick = (arr, fill) => ZT.LEVEL_KEYS.map((k) => {
-            const m = /^l(\d+)$/.exec(k);
-            const j = m ? +m[1] - 1 : -1;
-            return Array.isArray(arr) && j >= 0 && arr[j] != null ? arr[j] : fill;
-          });
-          o.cleared = pick(o.cleared, false);
-          o.best = pick(o.best, null);
-          o.ldeaths = pick(o.ldeaths, 0);
-          o.unlocked = 0;
-          o.keys = ZT.LEVEL_KEYS.slice();
-          raw = JSON.stringify(o);
-        }
+        if (old) local = normalizeSave(old, true);
       }
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        // Anahtarsız v4 kaydı, anahtar listesi eklenmeden önceki 36'lık sıraya aittir
-        const savedKeys = Array.isArray(parsed.keys) ? parsed.keys : V4_KEYS;
-        if (savedKeys.join() !== ZT.LEVEL_KEYS.join()) {
-          const remap = (arr, fill) => ZT.LEVEL_KEYS.map((k) => {
-            const j = savedKeys.indexOf(k);
-            return Array.isArray(arr) && j >= 0 && arr[j] != null ? arr[j] : fill;
-          });
-          parsed.cleared = remap(parsed.cleared, false);
-          parsed.best = remap(parsed.best, null);
-          parsed.ldeaths = remap(parsed.ldeaths, 0);
-          const u = parsed.unlocked | 0;
-          parsed.unlocked = ZT.LEVEL_KEYS.filter((k) => { const j = savedKeys.indexOf(k); return j >= 0 && j < u; }).length;
-        }
-        parsed.keys = ZT.LEVEL_KEYS.slice();
-        const s = Object.assign(defaults(), parsed);
-        if (!Array.isArray(s.seenCh)) s.seenCh = [];
-        for (const k of ['hintStage', 'perfect', 'earned']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
-        s.hints = Math.max(0, Math.min(HINT_MAX, Number.isFinite(s.hints) ? s.hints | 0 : HINT_START));
-        s.cleared = fit(s.cleared, false);
-        s.best = fit(s.best, null);
-        s.ldeaths = fit(s.ldeaths, 0);
-        s.unlocked = Math.max(0, Math.min(N - 1, s.unlocked | 0));
-        if (migrating && s.cleared[7]) s.unlocked = Math.max(s.unlocked, 8);
-        // Yeni bölümler eklendiyse, son geçilen bölümün devamı açık olsun
-        const lastCleared = s.cleared.lastIndexOf(true);
-        if (lastCleared >= 0) s.unlocked = Math.max(s.unlocked, Math.min(N - 1, lastCleared + 1));
-        return s;
-      }
-    } catch (e) {}
-    return defaults();
+    } catch (e) { local = null; }
+    inc = readImport();
+    if (inc) {
+      imported = true;
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      return local ? mergeSaves(local, inc) : inc;
+    }
+    return local || defaults();
   }
   function persist() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
   }
   let save = loadSave();
+  if (imported) persist();
   ZT.audio.muted = save.muted;
   ZT.audio.setMusic(save.music);
 

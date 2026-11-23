@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Zero Trust taşındı</title>
+  <link rel="canonical" href="https://zerotrust.studymode.fun/" />
+  <style>
+    html, body { height: 100%; margin: 0; background: #060607; color: #ece8df; font: 16px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+    body { display: grid; place-items: center; text-align: center; padding: 16px; box-sizing: border-box; }
+    b { color: #c8ff3d; }
+    a { color: #c8ff3d; }
+  </style>
+</head>
+<body>
+  <main>
+    <p><b>Zero Trust</b> taşındı / moved.</p>
+    <p>İlerlemen de seninle geliyor… / Bringing your progress along…</p>
+    <p><a id="go" href="https://zerotrust.studymode.fun/">zerotrust.studymode.fun</a></p>
+  </main>
+  <script>
+    // Bu adresteki kaydı okuyup yeni adrese taşır (yeni site #import= ile alır ve kendi kaydıyla birleştirir)
+    (function () {
+      var target = 'https://zerotrust.studymode.fun/';
+      try {
+        var k = 'zt.save.v4', s = localStorage.getItem(k);
+        if (!s) { k = 'zt.save.v3'; s = localStorage.getItem(k); }
+        if (s) {
+          var json = JSON.stringify({ k: k, s: s });
+          var b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          target += '#import=' + b64;
+        }
+      } catch (e) {}
+      document.getElementById('go').href = target;
+      location.replace(target);
+    })();
+  </script>
+</body>
+</html>
