@@ -18,11 +18,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # Hazırla ve yükle: dosya bu iş bitince kesinleşir. Yayınlama ayrı işte, bundan sonra.
+  # (Tek işte yapınca deploy-pages yeni yüklenen dosyayı bazen bulamıyordu.)
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/configure-pages@v6
@@ -31,9 +30,16 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html css js CNAME _site/
-          for f in favicon.svg favicon.ico og.png robots.txt; do [ -e "$f" ] && cp "$f" _site/ || true; done
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v5
