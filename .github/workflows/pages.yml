@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read   # yayınlama adımı yüklenen dosyayı listeleyebilsin
   pages: write
   id-token: write
 

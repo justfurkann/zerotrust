@@ -1,0 +1,5 @@
+# Netlify yalnızca oyunun kendisi (index.html, css, js) değiştiğinde yeniden yayın yapar.
+# Belgeler, araçlar ya da GitHub Pages ayarı değişince yayın atlanır ve kredi harcanmaz.
+[build]
+  publish = "."
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- index.html css js"
