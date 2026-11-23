@@ -1,5 +1,6 @@
-# Netlify yalnızca oyunun kendisi (index.html, css, js) değiştiğinde yeniden yayın yapar.
-# Belgeler, araçlar ya da GitHub Pages ayarı değişince yayın atlanır ve kredi harcanmaz.
+# Netlify artık oyunu yayınlamıyor: oyun https://zerotrust.studymode.fun adresinde (GitHub Pages).
+# Eski adrese gelen herkes netlify-move/ sayfasına düşer; o sayfa tarayıcıdaki kaydı alıp
+# yeni adrese taşır. Netlify yalnızca bu taşıma sayfası değişirse yeniden yayın yapar.
 [build]
-  publish = "."
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- index.html css js"
+  publish = "netlify-move"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- netlify-move netlify.toml"

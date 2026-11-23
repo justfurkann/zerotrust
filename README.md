@@ -7,6 +7,9 @@ Trol platform oyunu. Tabelaya, kapıya, zemine, hiçbir şeye güvenme.
 `main`'e her birleştirmede `.github/workflows/pages.yml` oyunu GitHub Pages'e yayınlar: **https://zerotrust.studymode.fun**
 (DNS: studymode.fun Vercel'de; `zerotrust` için `justfurkann.github.io` CNAME kaydı. Alan adı repo ayarlarında: Settings → Pages.)
 
+Eski adres `zerotrust-game.netlify.app` artık oyunu açmaz: `netlify-move/` sayfası tarayıcıdaki kaydı okuyup
+`#import=` ile yeni adrese taşır, yeni site de onu kendi kaydıyla birleştirir (`js/game.js`: `readImport`, `mergeSaves`).
+
 ## Hikâye
 
 Kare ile en yakın dostu Nokta otururken Üçgen askerleri Nokta'yı kaçırır. Kare onu kurtarmak için yola çıkar.
