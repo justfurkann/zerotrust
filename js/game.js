@@ -155,7 +155,6 @@
   let rings = [];                 // ölüm / iniş şok dalgaları
   let trail = [];                 // hızlı hareket izi
   let demoRun = 0;                // menüdeki demonun kaçıncı denemesi
-  let chapterSel = 0;             // bölüm seçiminde açık perde
   let cam = 0;                    // geniş bölümlerde kamera (px)
   let checkpoint = null;          // son kayıt noktası: { id, x, y, sw, unlocked }
 
@@ -2727,13 +2726,10 @@
     if (name !== 'playing' || prev === 'menu') keys.left = keys.right = keys.jump = false;
     if (name !== 'playing') hideToast();
     if (name === 'menu') refreshMenu();
-    if (name === 'levels') {
-      chapterSel = ZT.chapterOf(levelsReturn === 'paused' ? levelIdx : firstUnfinished());
-    }
     if (name === 'settings') refreshSettings();
     if (name === 'paused') refreshPause();
     if (name === 'end') refreshEnd();
-    if (name === 'levels') { setChapter(chapterSel); return; }
+    if (name === 'levels') { openMap(); return; }
     const focusTarget = document.querySelector('#scr-' + overlay + ' [data-autofocus]');
     if (focusTarget) focusTarget.focus({ preventScroll: true });
     else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -2853,100 +2849,338 @@
     g.fillRect(L.spawn[0] * u + u * 0.2, oy + L.spawn[1] * u + u * 0.1, u * 0.6, u * 0.9);
   }
 
-  function renderLevelGrid() {
+  // ───────────── Yolculuk haritası (bölüm seçimi) ─────────────
+  // Yol aşağıdan (Sınır Kapısı) yukarıya (Taht Odası) tırmanır. Ölçüler "u" cinsinden (sahne genişliği = 192u).
+  const MAP = { STEP: 12, SIGN: 18, PAD_TOP: 16, PAD_BOT: 14, CX: 62, AMP: 34 };
+  let mapNodes = [], mapFocus = 0, mapZeroRaf = 0;
+
+  // Her yerin simgesi: düz siluetler, yerin rengiyle vurgu
+  function drawLandmark(g, key, W, H, col) {
+    const ink = '#1c1b24', ink2 = '#26252f', glow = 'rgba(' + col + ',';
+    const base = H - 20;
+    g.fillStyle = ink; g.fillRect(0, base, W, 20);
+    const tri = (x, y, s) => { g.fillStyle = glow + '0.9)'; g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 0.9, y); g.lineTo(x - s * 0.9, y); g.closePath(); g.fill(); };
+    const win = (x, y, w, h, on) => { g.fillStyle = on ? glow + '0.75)' : ink2; g.fillRect(x, y, w, h); };
+    switch (key) {
+      case 'ch1': { // Sınır kapısı: iki kule, kemer, bariyer
+        g.fillStyle = ink; g.fillRect(120, 90, 50, base - 90); g.fillRect(310, 90, 50, base - 90);
+        g.fillRect(110, 78, 70, 16); g.fillRect(300, 78, 70, 16);
+        g.beginPath(); g.moveTo(170, 130); g.quadraticCurveTo(240, 60, 310, 130); g.lineTo(310, 150); g.quadraticCurveTo(240, 85, 170, 150); g.fill();
+        for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? '#e8e4da' : glow + '0.95)'; g.fillRect(170 + i * 20, 200, 20, 10); }
+        win(137, 120, 16, 22, true); win(327, 120, 16, 22, true);
+        tri(80, base, 22); tri(400, base, 22);
+        break;
+      }
+      case 'ch2': { // Eşyalar kasabası: evler ve dev anahtar
+        const house = (x, w, h, lit) => {
+          g.fillStyle = ink; g.fillRect(x, base - h, w, h);
+          g.beginPath(); g.moveTo(x - 8, base - h); g.lineTo(x + w / 2, base - h - w * 0.55); g.lineTo(x + w + 8, base - h); g.fill();
+          win(x + w * 0.2, base - h + 18, w * 0.22, 20, lit); win(x + w * 0.58, base - h + 18, w * 0.22, 20, !lit);
+        };
+        house(60, 90, 90, true); house(180, 110, 130, false); house(320, 80, 70, true);
+        g.save(); g.translate(400, 150); g.rotate(-0.5); g.strokeStyle = glow + '0.95)'; g.lineWidth = 9;
+        g.beginPath(); g.arc(0, 0, 22, 0, Math.PI * 2); g.stroke();
+        g.fillStyle = glow + '0.95)'; g.fillRect(20, -5, 70, 10); g.fillRect(70, 5, 8, 16); g.fillRect(84, 5, 6, 12);
+        g.restore();
+        break;
+      }
+      case 'ch3': { // Yalan dairesi: bina ve hata penceresi
+        g.fillStyle = ink; g.fillRect(110, 40, 170, base - 40); g.fillRect(150, 22, 90, 20);
+        for (let r = 0; r < 6; r++) for (let c = 0; c < 5; c++) win(124 + c * 31, 58 + r * 34, 18, 20, (r * 5 + c) % 7 === 2);
+        g.fillStyle = '#0e0d14'; g.fillRect(250, 110, 170, 100);
+        g.fillStyle = glow + '0.95)'; g.fillRect(250, 110, 170, 18);
+        g.strokeStyle = glow + '0.95)'; g.lineWidth = 3; g.strokeRect(250, 110, 170, 100);
+        g.fillStyle = glow + '0.95)'; g.font = '700 54px "Space Grotesk", system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText('!', 290, 172); g.fillRect(320, 160, 80, 8); g.fillRect(320, 180, 60, 8);
+        break;
+      }
+      case 'ch4': { // Fabrika: testere çatı, bacalar, duman
+        g.fillStyle = ink;
+        g.fillRect(70, 130, 330, base - 130);
+        for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(70 + i * 66, 130); g.lineTo(70 + i * 66, 90); g.lineTo(136 + i * 66, 130); g.fill(); }
+        g.fillRect(300, 40, 26, 90); g.fillRect(350, 60, 26, 70);
+        for (let i = 0; i < 5; i++) win(95 + i * 62, 170, 30, 26, i !== 2);
+        g.fillStyle = 'rgba(200,200,215,0.22)';
+        for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(318 + i * 16, 30 - i * 12, 12 + i * 4, 0, Math.PI * 2); g.fill(); }
+        tri(140, base, 18); tri(190, base, 18);
+        break;
+      }
+      case 'ch5': { // Taş bahçesi: kare taşlar (ölümlerin)
+        const stone = (x, s, tilt) => { g.save(); g.translate(x, base - s / 2); g.rotate(tilt); g.fillStyle = '#3a3944'; g.fillRect(-s / 2, -s / 2, s, s); g.fillStyle = '#4a4955'; g.fillRect(-s / 2, -s / 2, s, s * 0.22); g.fillStyle = '#23222b'; g.fillRect(-s * 0.22, -s * 0.12, s * 0.12, s * 0.2); g.fillRect(s * 0.1, -s * 0.12, s * 0.12, s * 0.2); g.restore(); };
+        stone(90, 50, -0.08); stone(150, 70, 0.05); stone(225, 44, 0.12); stone(290, 84, -0.03); stone(370, 56, 0.07);
+        g.fillStyle = glow + '0.8)';
+        for (let i = 0; i < 9; i++) { const x = 60 + i * 44, h = 14 + (i * 37) % 22; g.fillRect(x, base - h, 4, h); g.beginPath(); g.arc(x + 2, base - h, 6, 0, Math.PI * 2); g.fill(); }
+        break;
+      }
+      case 'ch6': { // Saat kulesi
+        g.fillStyle = ink; g.fillRect(190, 70, 100, base - 70);
+        g.beginPath(); g.moveTo(180, 72); g.lineTo(240, 6); g.lineTo(300, 72); g.fill();
+        g.fillStyle = '#0e0d14'; g.beginPath(); g.arc(240, 118, 36, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = glow + '0.95)'; g.lineWidth = 5; g.stroke();
+        g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(240, 118); g.lineTo(240, 94); g.moveTo(240, 118); g.lineTo(258, 128); g.stroke();
+        g.fillStyle = 'rgba(255,122,184,0.8)'; g.fillRect(70, 170, 60, 22);
+        g.fillStyle = 'rgba(79,209,255,0.8)'; g.fillRect(350, 150, 60, 22);
+        win(222, 190, 36, 40, true);
+        break;
+      }
+      case 'ch7': { // Gözetleme kulesi: göz ve ok
+        g.fillStyle = ink; g.beginPath(); g.moveTo(215, base); g.lineTo(230, 80); g.lineTo(250, 80); g.lineTo(265, base); g.fill();
+        g.fillRect(195, 60, 90, 22); g.fillRect(205, 30, 70, 32);
+        g.fillStyle = '#efeaf8'; g.beginPath(); g.ellipse(240, 46, 22, 11, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = glow + '1)'; g.beginPath(); g.arc(246, 46, 7, 0, Math.PI * 2); g.fill();
+        g.fillStyle = glow + '0.85)';
+        g.beginPath(); g.moveTo(320, 150); g.lineTo(390, 150); g.lineTo(390, 136); g.lineTo(420, 160); g.lineTo(390, 184); g.lineTo(390, 170); g.lineTo(320, 170); g.fill();
+        g.globalAlpha = 0.35; g.beginPath(); g.moveTo(160, 150); g.lineTo(90, 150); g.lineTo(90, 136); g.lineTo(60, 160); g.lineTo(90, 184); g.lineTo(90, 170); g.lineTo(160, 170); g.fill(); g.globalAlpha = 1;
+        break;
+      }
+      case 'ch8': { // Taht odası: kale, taht, kafes
+        g.fillStyle = ink; g.fillRect(60, 90, 360, base - 90);
+        for (let i = 0; i < 9; i++) g.fillRect(60 + i * 42, 72, 24, 20);
+        g.fillRect(40, 50, 50, base - 50); g.fillRect(390, 50, 50, base - 50);
+        const grd = g.createRadialGradient(240, 170, 10, 240, 170, 120);
+        grd.addColorStop(0, glow + '0.55)'); grd.addColorStop(1, glow + '0)');
+        g.fillStyle = grd; g.fillRect(110, 60, 260, base - 60);
+        g.fillStyle = glow + '0.95)'; g.fillRect(205, 130, 70, 80); g.fillRect(195, 110, 90, 24);
+        g.fillStyle = ink; g.fillRect(218, 150, 44, 60);
+        g.strokeStyle = '#9a98a6'; g.lineWidth = 4; g.strokeRect(318, 150, 52, 60);
+        for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(318 + i * 13, 150); g.lineTo(318 + i * 13, 210); g.stroke(); }
+        g.fillStyle = '#ff7ab8'; g.beginPath(); g.arc(344, 192, 11, 0, Math.PI * 2); g.fill();
+        break;
+      }
+    }
+  }
+
+  function mapNodeAt(i) { return mapNodes[i]; }
+
+  function renderMap() {
+    const map = $('map');
+    map.innerHTML = '';
+    const N_ = N, S = MAP;
     const next = firstUnfinished();
-
-    const rail = $('chRail');
-    rail.innerHTML = '';
-    ZT.CHAPTERS.forEach((ch, ci) => {
-      const total = ch.to - ch.from + 1;
-      let done = 0;
-      for (let i = ch.from; i <= ch.to; i++) if (save.cleared[i]) done++;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'ch' + (ci === chapterSel ? ' active' : '') + (save.unlocked < ch.from ? ' locked' : '');
-      b.style.setProperty('--ch', 'rgb(' + ch.tint.join(',') + ')');
-      b.innerHTML = '<span class="ch-name"></span><span class="ch-title"></span><span class="ch-prog"><span></span><span class="meter"><i></i></span></span>';
-      b.querySelector('.ch-name').textContent = t(ch.key + '.name') + ' · ' + pad2(ch.from + 1) + '–' + pad2(ch.to + 1);
-      b.querySelector('.ch-title').textContent = t(ch.key + '.title');
-      b.querySelector('.ch-prog span').textContent = done + '/' + total;
-      b.querySelector('.meter i').style.width = (done / total) * 100 + '%';
-      b.addEventListener('click', () => { ZT.audio.play('ui'); setChapter(ci, true); });
-      rail.appendChild(b);
+    const allDone = save.cleared.every(Boolean);
+    // Yükseklik ve konumlar
+    const H = S.PAD_TOP + S.PAD_BOT + ZT.CHAPTERS.length * S.SIGN + N_ * S.STEP;
+    map.style.height = 'calc(var(--u) * ' + H + ')';
+    const pts = [];
+    const places = [];
+    let y = H - S.PAD_BOT;
+    ZT.CHAPTERS.forEach((ch) => {
+      const bottom = y;
+      y -= S.SIGN;
+      const signY = y + S.SIGN / 2;
+      for (let i = ch.from; i <= ch.to; i++) {
+        y -= S.STEP;
+        pts[i] = { x: S.CX + S.AMP * Math.sin(i * 0.82 + 0.6), y: y + S.STEP / 2 };
+      }
+      places.push({ ch, top: y, bottom, signY });
     });
+    const at = (u) => 'calc(var(--u) * ' + u.toFixed(2) + ')';
+    const rgbOf = (ci) => ZT.CHAPTERS[ci].tint.join(',');
+    // Bantlar, simgeler, tabelalar
+    places.forEach((p, ci) => {
+      const locked = save.unlocked < p.ch.from;
+      const band = document.createElement('div');
+      band.className = 'band' + (locked ? ' locked' : '');
+      band.style.cssText = '--rgb:' + rgbOf(ci) + ';top:' + at(p.top) + ';height:' + at(p.bottom - p.top);
+      map.appendChild(band);
+      // Simge tabelanın karşı tarafına (üst üste binmesinler)
+      const signLeft = pts[p.ch.from].x > S.CX;
+      const lm = document.createElement('canvas');
+      lm.width = 480; lm.height = 300;
+      lm.className = 'landmark' + (locked ? ' locked' : '');
+      drawLandmark(lm.getContext('2d'), p.ch.key, 480, 300, rgbOf(ci));
+      lm.style.left = at(signLeft ? 76 : 4);
+      lm.style.top = at((p.top + p.bottom) / 2 - 15);
+      map.appendChild(lm);
+      const sign = document.createElement('div');
+      sign.className = 'place' + (locked ? ' locked' : '');
+      sign.style.cssText = '--rgb:' + rgbOf(ci) + ';top:' + at(p.signY) + ';left:' + at(signLeft ? 8 : 84);
+      let done = 0;
+      for (let i = p.ch.from; i <= p.ch.to; i++) if (save.cleared[i]) done++;
+      const tot = p.ch.to - p.ch.from + 1;
+      sign.innerHTML = '<small></small><b></b><span class="pl-prog"><span></span><span class="meter"><i></i></span></span>';
+      sign.querySelector('small').textContent = t(p.ch.key + '.name');
+      sign.querySelector('b').textContent = t(p.ch.key + '.title');
+      sign.querySelector('.pl-prog > span').textContent = done + '/' + tot;
+      sign.querySelector('.meter i').style.width = (done / tot) * 100 + '%';
+      map.appendChild(sign);
+    });
+    const top = document.createElement('div');
+    top.className = 'map-top';
+    top.style.top = at(5);
+    top.textContent = t('map.top');
+    map.appendChild(top);
 
-    const grid = $('levelGrid');
-    grid.innerHTML = '';
-    const ch = ZT.CHAPTERS[chapterSel];
-    let chDone = 0;
-    for (let i = ch.from; i <= ch.to; i++) if (save.cleared[i]) chDone++;
-    $('chHero').style.setProperty('--ch', 'rgb(' + ch.tint.join(',') + ')');
-    $('chHeroName').textContent = t(ch.key + '.name') + ' · ' + pad2(ch.from + 1) + '–' + pad2(ch.to + 1);
-    $('chHeroTitle').textContent = t(ch.key + '.title');
-    $('chHeroDesc').textContent = t(ch.key + '.desc');
-    $('chHeroDone').textContent = String(chDone);
-    $('chHeroTotal').textContent = '/' + (ch.to - ch.from + 1);
-    let focusCard = null, pinned = false;
-    for (let i = ch.from; i <= ch.to; i++) {
+    // Yol: Catmull-Rom eğrisi, her parça kendi rengiyle (geçilmiş: yerin rengi, geçilmemiş: kesik gri)
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'map-path');
+    svg.setAttribute('viewBox', '0 0 192 ' + H);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.height = at(H);
+    const P = (i) => pts[Math.max(0, Math.min(N_ - 1, i))];
+    for (let i = 0; i < N_ - 1; i++) {
+      const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+      const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+      const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+      const d = 'M' + p1.x + ' ' + p1.y + ' C' + c1.x + ' ' + c1.y + ' ' + c2.x + ' ' + c2.y + ' ' + p2.x + ' ' + p2.y;
+      const done = save.cleared[i];
+      const under = document.createElementNS(NS, 'path');
+      under.setAttribute('d', d);
+      under.setAttribute('fill', 'none');
+      under.setAttribute('stroke', 'rgba(6,6,7,0.9)');
+      under.setAttribute('stroke-width', '2.4');
+      svg.appendChild(under);
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      if (done) {
+        path.setAttribute('stroke', 'rgb(' + rgbOf(ZT.chapterOf(i + 1)) + ')');
+        path.setAttribute('stroke-width', '0.9');
+      } else {
+        path.setAttribute('stroke', i < save.unlocked ? 'rgba(236,232,223,0.45)' : 'rgba(236,232,223,0.14)');
+        path.setAttribute('stroke-dasharray', '0.1 2.4');
+        path.setAttribute('stroke-width', '1');
+      }
+      svg.appendChild(path);
+    }
+    map.appendChild(svg);
+
+    // Düğümler
+    mapNodes = [];
+    for (let i = 0; i < N_; i++) {
       const unlocked = i <= save.unlocked;
       const cleared = save.cleared[i];
       const isNext = unlocked && i === next && !cleared;
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'lvl' + (unlocked ? '' : ' locked') + (cleared ? ' cleared' : '') + (isNext ? ' next' : '');
-      card.disabled = !unlocked;
-      card.style.setProperty('--i', i - ch.from);
-      card.innerHTML = '<span class="lvl-thumb"></span><span class="lvl-info"><span class="lvl-num"></span><span class="lvl-title"></span><span class="lvl-stat"><i></i></span></span>';
-      const thumb = card.querySelector('.lvl-thumb');
-      if (unlocked) {
-        const cv = document.createElement('canvas');
-        cv.width = THUMB_W;
-        cv.height = THUMB_H;
-        drawThumb(cv, i);
-        thumb.appendChild(cv);
-      } else {
-        const lock = document.createElement('span');
-        lock.className = 'lvl-lock';
-        lock.textContent = t('levels.locked');
-        thumb.appendChild(lock);
-      }
-      if (isNext) {
-        const flag = document.createElement('span');
-        flag.className = 'lvl-flag';
-        flag.textContent = t('levels.next');
-        thumb.appendChild(flag);
-      }
-      card.querySelector('.lvl-num').textContent = pad2(i + 1);
-      card.querySelector('.lvl-title').textContent = unlocked ? t(ZT.LEVEL_KEYS[i] + '.title') : '? ? ?';
-      const stat = card.querySelector('.lvl-stat');
+      const ci = ZT.chapterOf(i);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'node' + (cleared ? ' cleared' : '') + (isNext ? ' next' : '') + (unlocked ? '' : ' locked');
+      if (!unlocked) b.setAttribute('aria-disabled', 'true');
+      b.style.cssText = '--rgb:' + rgbOf(ci) + ';--d:' + Math.abs(i - next) + ';left:' + at(pts[i].x) + ';top:' + at(pts[i].y);
+      b.innerHTML = '<span class="n"></span>';
+      b.querySelector('.n').textContent = String(i + 1);
+      b.setAttribute('aria-label', t('levels.level') + ' ' + (i + 1) + (unlocked ? ' · ' + t(ZT.LEVEL_KEYS[i] + '.title') : ' · ' + t('levels.locked')));
       if (cleared) {
-        const tm = document.createElement('b');
-        tm.textContent = fmtTime(save.best[i]);
-        const dd = document.createElement('span');
-        dd.className = 'danger';
-        dd.textContent = '✕ ' + (save.ldeaths[i] || 0);
-        stat.append(tm, dd);
-      } else {
-        const sp = document.createElement('span');
-        sp.textContent = !unlocked ? t('levels.locked') : (save.ldeaths[i] ? '✕ ' + save.ldeaths[i] + ' · ' : '') + t('levels.none');
-        stat.appendChild(sp);
+        const badge = document.createElement('span');
+        const d = save.ldeaths[i] || 0;
+        badge.className = 'badge' + (d === 0 ? ' perfect' : '');
+        if (d === 0) badge.textContent = '★ ' + fmtTime(save.best[i]);
+        else { badge.textContent = fmtTime(save.best[i]) + ' '; const s = document.createElement('span'); s.className = 'danger'; s.textContent = '✕' + d; badge.appendChild(s); }
+        b.appendChild(badge);
       }
-      if (unlocked) card.addEventListener('click', () => { ZT.audio.play('ui'); startLevel(i); });
-      const current = levelsReturn === 'paused' && i === levelIdx;
-      if (unlocked && (!focusCard || isNext || current) && !pinned) {
-        focusCard = card;
-        pinned = current;
-      }
-      grid.appendChild(card);
+      b.addEventListener('mouseenter', () => showMapCard(i));
+      b.addEventListener('focus', () => { mapFocus = i; showMapCard(i); });
+      b.addEventListener('click', () => { if (unlocked) { ZT.audio.play('ui'); startLevel(i); } else ZT.audio.play('error'); });
+      map.appendChild(b);
+      mapNodes.push(b);
     }
-    return focusCard;
+
+    // Kare (sen) ve Sıfır
+    const here = levelsReturn === 'paused' ? levelIdx : Math.min(next, N_ - 1);
+    const me = document.createElement('div');
+    me.className = 'me';
+    me.style.left = at(pts[here].x);
+    me.style.top = at(pts[here].y);
+    map.appendChild(me);
+    const zx = pts[here].x + (pts[here].x > S.CX ? -11 : 11), zy = pts[here].y - 7;
+    const zc = document.createElement('canvas');
+    zc.width = 140; zc.height = 140;
+    zc.className = 'map-zero';
+    zc.style.left = at(zx); zc.style.top = at(zy);
+    map.appendChild(zc);
+    const bubble = document.createElement('div');
+    const leftSide = zx < pts[here].x;   // balon Kare'nin ters tarafına açılır
+    bubble.className = 'map-bubble' + (leftSide ? ' left' : '');
+    bubble.style.left = at(zx + (leftSide ? -4.5 : 4.5));
+    bubble.style.top = at(zy);
+    const lines = t('map.zero');
+    bubble.textContent = allDone ? t('map.zeroDone') : Array.isArray(lines) ? lines[(here * 7 + save.deaths) % lines.length] : lines;
+    map.appendChild(bubble);
+    cancelAnimationFrame(mapZeroRaf);
+    const zg = zc.getContext('2d');
+    let zt = 0;
+    const animZero = () => {
+      if (screen !== 'levels') return;
+      zt++;
+      zg.clearRect(0, 0, 140, 140);
+      ZT.story.drawZero(zg, 70, 70 + Math.sin(zt * 0.05) * 5, 38, { t: zt, mood: allDone ? 'smug' : 'calm', lookX: leftSide ? 0.6 : -0.6, lookY: 0.4 });
+      mapZeroRaf = requestAnimationFrame(animZero);
+    };
+    animZero();
+    return here;
   }
 
-  function setChapter(ci, keepRailFocus) {
-    chapterSel = (ci + ZT.CHAPTERS.length) % ZT.CHAPTERS.length;
-    const card = renderLevelGrid();
-    const target = keepRailFocus ? $('chRail').children[chapterSel] : card || $('chRail').children[chapterSel];
-    if (target) target.focus({ preventScroll: true });
+  function showMapCard(i) {
+    const unlocked = i <= save.unlocked;
+    const cleared = save.cleared[i];
+    const ci = ZT.chapterOf(i);
+    const ch = ZT.CHAPTERS[ci];
+    $('mapCard').style.setProperty('--rgb', ch.tint.join(','));
+    $('mcPlace').textContent = t(ch.key + '.name') + ' · ' + t(ch.key + '.title');
+    $('mcNum').textContent = pad2(i + 1);
+    $('mcTitle').textContent = unlocked ? t(ZT.LEVEL_KEYS[i] + '.title') : '? ? ?';
+    const th = $('mcThumb');
+    th.innerHTML = '';
+    if (unlocked) {
+      const cv = document.createElement('canvas');
+      cv.width = THUMB_W; cv.height = THUMB_H;
+      drawThumb(cv, i);
+      th.appendChild(cv);
+    } else {
+      const lock = document.createElement('span');
+      lock.className = 'lvl-lock';
+      lock.textContent = t('levels.locked');
+      th.appendChild(lock);
+    }
+    const st = $('mcStats');
+    st.innerHTML = '';
+    const stat = (label, value, cls) => {
+      const s = document.createElement('div');
+      s.className = 'stat';
+      s.innerHTML = '<small></small><b></b>';
+      s.querySelector('small').textContent = label;
+      s.querySelector('b').textContent = value;
+      if (cls) s.querySelector('b').className = cls;
+      st.appendChild(s);
+    };
+    if (cleared) {
+      stat(t('map.best'), fmtTime(save.best[i]));
+      stat(t('map.deaths'), String(save.ldeaths[i] || 0), save.ldeaths[i] ? 'danger' : '');
+    } else if (unlocked) {
+      stat(t('map.state'), t('levels.none'));
+      if (save.ldeaths[i]) stat(t('map.deaths'), String(save.ldeaths[i]), 'danger');
+    }
+    $('mcDesc').textContent = unlocked ? t(ch.key + '.desc') : t('map.lockedDesc');
+    $('mcPlay').textContent = unlocked ? t('map.play') : '';
+  }
+
+  // Haritada bir düğüme odaklan ve kaydırarak ortala
+  function focusMapNode(i, smooth) {
+    i = Math.max(0, Math.min(Math.min(save.unlocked, N - 1), i));
+    const b = mapNodes[i];
+    if (!b) return;
+    mapFocus = i;
+    b.focus({ preventScroll: true });
+    showMapCard(i);
+    const wrap = $('mapWrap');
+    const target = b.offsetTop - wrap.clientHeight / 2;
+    wrap.scrollTo({ top: target, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  function openMap() {
+    const here = renderMap();
+    focusMapNode(here, false);
+  }
+
+  // Q / E: önceki / sonraki yerin ilk bölümüne atla
+  function jumpPlace(dir) {
+    const ci = ZT.chapterOf(mapFocus) + dir;
+    if (ci < 0 || ci >= ZT.CHAPTERS.length) return;
+    const ch = ZT.CHAPTERS[ci];
+    if (ch.from > save.unlocked) return;
+    focusMapNode(ch.from, true);
   }
 
   // Yön tuşlarıyla gezinme: o yöndeki en yakın düğmeye geç
@@ -3086,7 +3320,7 @@
     if (world) for (const e of world.ents) if (e.t === 'hud') e.pw = measureHudTitle();
     updateHud();
     if (screen === 'menu') refreshMenu();
-    if (screen === 'levels') renderLevelGrid();
+    if (screen === 'levels') { renderMap(); focusMapNode(mapFocus, false); }
     if (screen === 'settings') refreshSettings();
     if (screen === 'paused') refreshPause();
     if (screen === 'end') refreshEnd();
@@ -3114,10 +3348,17 @@
     if (screen !== 'playing') {
       if (screen === 'menu' && c === 'Enter' && document.activeElement === document.body) playOrStart();
       const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[c];
-      if (arrow) { e.preventDefault(); moveFocus(arrow[0], arrow[1]); }
+      if (screen === 'levels' && arrow) {
+        // Haritada yol boyunca: yukarı/sağ ileri, aşağı/sol geri
+        e.preventDefault();
+        const dir = c === 'ArrowUp' || c === 'ArrowRight' ? 1 : -1;
+        const onNode = mapNodes.includes(document.activeElement);
+        focusMapNode(onNode ? mapFocus + dir : mapFocus, true);
+        ZT.audio.play('ui');
+      } else if (arrow) { e.preventDefault(); moveFocus(arrow[0], arrow[1]); }
       if (screen === 'levels' && (c === 'KeyQ' || c === 'KeyE') && !e.repeat) {
         ZT.audio.play('ui');
-        setChapter(chapterSel + (c === 'KeyE' ? 1 : -1));
+        jumpPlace(c === 'KeyE' ? 1 : -1);
       }
       if (screen === 'paused' && c === 'KeyR') { clearStones(); loadLevel(levelIdx, { silent: true }); setScreen('playing'); }
       return;
