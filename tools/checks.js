@@ -53,12 +53,14 @@ assert.equal(D.state().dead, false);
 console.log('PASS: facing persistence, disappearing support, enclosed turn, safe turn');
 const old = { unlocked: 41, cleared: Array(42).fill(true), best: Array(42).fill(100), deaths: 123, ldeaths: Array(42).fill(2) };
 const migrated = createGame({ saved: { 'zt.save.v3': JSON.stringify(old) } });
-// 48'li eski kayıt: l1..l42 geçilmiş → hikâyede sıradaki l43 (#31)
-assert.match(migrated.elements.get('btnPlayNote').textContent, new RegExp('^' + (K('l43') + 1)));
-assert.equal(migrated.elements.get('menuProgress').textContent, String(K('l43')));
+// 48'li eski kayıt: l1..l42 geçilmiş → hikâyede o anahtarlardan olmayan ilk bölümde devam
+const wasCleared = (k) => { const m = /^l(\d+)$/.exec(k); return !!m && +m[1] <= 42; };
+const nextIdx = ZT.LEVEL_KEYS.findIndex((k) => !wasCleared(k));
+assert.match(migrated.elements.get('btnPlayNote').textContent, new RegExp('^' + String(nextIdx + 1).padStart(2, '0') + ' '));
+assert.equal(migrated.elements.get('menuProgress').textContent, String(ZT.LEVEL_KEYS.filter(wasCleared).length));
 assert.equal(migrated.elements.get('menuTotal').textContent, '/' + N);
 assert.equal(migrated.elements.get('menuDeaths').textContent, '123');
-console.log('PASS: old 48-level save migrates by level key and continues at l43, with stats preserved');
+console.log('PASS: old 48-level save migrates by level key and continues at the first level it never cleared, with stats preserved');
 
 // The introductory turnaround has a window, rather than one required frame.
 let wins = 0;

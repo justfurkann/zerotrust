@@ -80,11 +80,14 @@
 
   // ───────────────────────── Kayıt ─────────────────────────
   const SAVE_KEY = 'zt.save.v4';
+  const HINT_START = 3, HINT_MAX = 9;
   function defaults() {
     return {
       unlocked: 0, cleared: Array(N).fill(false), deaths: 0,
       muted: false, music: true, radar: false, seenIntro: false, seenCh: [],
-      best: Array(N).fill(null), ldeaths: Array(N).fill(0)
+      best: Array(N).fill(null), ldeaths: Array(N).fill(0),
+      // İpucu bir kaynak: sayılı, oyun içinde kazanılır. hintStage: bölüm anahtarı → açılan kademe (1 dürtme, 2 tam)
+      hints: HINT_START, hintStage: {}, perfect: {}, earned: {}
     };
   }
   function fit(arr, fill) {
@@ -116,6 +119,8 @@
       if (raw) {
         const s = Object.assign(defaults(), JSON.parse(raw));
         if (!Array.isArray(s.seenCh)) s.seenCh = [];
+        for (const k of ['hintStage', 'perfect', 'earned']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
+        s.hints = Math.max(0, Math.min(HINT_MAX, Number.isFinite(s.hints) ? s.hints | 0 : HINT_START));
         s.cleared = fit(s.cleared, false);
         s.best = fit(s.best, null);
         s.ldeaths = fit(s.ldeaths, 0);
@@ -467,13 +472,49 @@
     $('hudBest').textContent = fmtTime(save.best[levelIdx]);
     $('hudRadar').hidden = !save.radar;
     $('hudTime').textContent = fmtTime(levelTicks);
-    $('hintText').textContent = t(ZT.LEVEL_KEYS[levelIdx] + '.hint');
     $('hud').classList.toggle('fake-title', !!(world && world.ents.some((e) => e.t === 'hud')));
     updateHint();
   }
 
+  // İpucu kendiliğinden gelmez. H ile harcanır: önce ilk cümle (dürtme), ikincisi tamamı.
+  // Açılan kademe o bölüm için kalıcıdır; tekrar okumak bedava.
+  function hintParts() {
+    const full = String(t(ZT.LEVEL_KEYS[levelIdx] + '.hint'));
+    const m = /^(.+?[.!?])\s+\S/.exec(full);
+    return { first: m ? m[1] : full, full, split: !!m };
+  }
+  function hintStage() { return save.hintStage[ZT.LEVEL_KEYS[levelIdx]] || 0; }
   function updateHint() {
-    $('hint').classList.toggle('on', levelDeaths >= 3 || levelTicks > 1800);
+    const st = hintStage(), hp = hintParts();
+    $('hintText').textContent = st >= 2 || (st === 1 && !hp.split) ? hp.full : st === 1 ? hp.first : '';
+    $('hint').classList.toggle('on', st > 0 && screen !== 'menu');
+    $('hudHints').textContent = String(save.hints);
+    const maxed = st >= 2 || (st === 1 && !hp.split);
+    const box = $('hudHintBox');
+    box.classList.toggle('empty', save.hints <= 0 && !maxed);
+    box.classList.toggle('done', maxed);
+    // Çok takılınca sayaç hafifçe nabız atar; ipucu yine de kendiliğinden açılmaz
+    box.classList.toggle('nudge', !maxed && save.hints > 0 && levelDeaths >= 6);
+  }
+  function useHint() {
+    if (screen !== 'playing') return;
+    const key = ZT.LEVEL_KEYS[levelIdx], st = hintStage(), hp = hintParts();
+    const maxed = st >= 2 || (st === 1 && !hp.split);
+    if (maxed) { ZT.audio.play('ui'); toast(t('hint.allOpen'), 'info'); return; }
+    if (save.hints <= 0) { ZT.audio.play('error'); toast(t('hint.none'), 'info', t('hint.howTo')); return; }
+    save.hints--;
+    save.hintStage[key] = st + 1;
+    persist();
+    ZT.audio.play('ui');
+    toast(t(st === 0 ? 'hint.used1' : 'hint.used2'), 'info', t('hint.left', { n: save.hints }));
+    updateHint();
+  }
+  function giveHint(id, n) {
+    if (save.earned[id]) return 0;
+    save.earned[id] = true;
+    const before = save.hints;
+    save.hints = Math.min(HINT_MAX, save.hints + n);
+    return save.hints - before;
   }
 
   // ───────────────────────── Bölüm yönetimi ─────────────────────────
@@ -540,6 +581,7 @@
     save.ldeaths[levelIdx] = (save.ldeaths[levelIdx] || 0) + 1;
     levelDeaths++;
     persist();
+    if (levelDeaths === 6) updateHint();
     ZT.audio.play('die');
     ZT.audio.duck();
     flash();
@@ -581,10 +623,19 @@
         : t('ev.time', { t: fmtTime(levelTicks), b: fmtTime(prev) });
     if (record) save.best[levelIdx] = levelTicks;
     save.unlocked = Math.min(N - 1, Math.max(save.unlocked, levelIdx + 1));
+    // İpucu kazanma: bir bölümü ilk kez hiç ölmeden geçmek +1, bir yeri bitirmek +1
+    const key = ZT.LEVEL_KEYS[levelIdx];
+    let gained = 0;
+    if (levelDeaths === 0) { save.perfect[key] = true; gained += giveHint('perfect:' + key, 1); }
+    const chNow = ZT.CHAPTERS[ZT.chapterOf(levelIdx)];
+    let chDone = true;
+    for (let i = chNow.from; i <= chNow.to; i++) if (!save.cleared[i]) chDone = false;
+    if (chDone) gained += giveHint('place:' + chNow.key, 1);
     persist();
+    const gainNote = gained ? t('hint.gain', { n: gained }) : '';
     if (levelIdx < N - 1) {
       // Kafesten (ihanetten) sonra "Nokta yakın" demek sahneyi öldürür: orada sessiz kal
-      if (ZT.LEVEL_KEYS[levelIdx] !== 'f1') toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', timeNote);
+      if (ZT.LEVEL_KEYS[levelIdx] !== 'f1') toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', gainNote ? timeNote + ' · ' + gainNote : timeNote);
       transT = TRANS_T;
       loadLevel(levelIdx + 1, { fresh: true });
       maybeInterlude(levelIdx);
@@ -1385,7 +1436,6 @@
     levelTicks++;
     // Zamanlı tehditler oyuncu ilk hareket ettiğinde başlar (giriş kartını okurken kimse ölmesin)
     if (world.armT < 0 && (Math.abs(player.x - world.sx) > 24 || player.vy < -1)) world.armT = world.t;
-    if (levelTicks === 1801) updateHint();
     updateEnts();
     updatePlayer();
     // İçinde katılaştırdığın blok, hemen yanındaki çıkıştan önce değerlendirilir.
@@ -3065,8 +3115,9 @@
       if (cleared) {
         const badge = document.createElement('span');
         const d = save.ldeaths[i] || 0;
-        badge.className = 'badge' + (d === 0 ? ' perfect' : '');
-        if (d === 0) badge.textContent = '★ ' + fmtTime(save.best[i]);
+        const perfect = save.perfect[ZT.LEVEL_KEYS[i]] || d === 0;
+        badge.className = 'badge' + (perfect ? ' perfect' : '');
+        if (perfect) badge.textContent = '★ ' + fmtTime(save.best[i]);
         else { badge.textContent = fmtTime(save.best[i]) + ' '; const s = document.createElement('span'); s.className = 'danger'; s.textContent = '✕' + d; badge.appendChild(s); }
         b.appendChild(badge);
       }
@@ -3257,6 +3308,7 @@
   on('btnPauseMenu', () => setScreen('menu'));
   on('btnEndMenu', () => setScreen('menu'));
   on('hudPause', () => setScreen('paused'));
+  on('hudHintBox', () => { useHint(); $('hudHintBox').blur(); });
 
   document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => {
     ZT.audio.play('ui');
@@ -3368,6 +3420,7 @@
     if (RIGHT.includes(c)) keys.right = true;
     if (JUMP_KEYS.includes(c)) { keys.jump = true; e.preventDefault(); }
     if (c === 'KeyR' && !e.repeat && world.exiting === 0) { clearStones(); loadLevel(levelIdx, { silent: true }); }
+    if (c === 'KeyH' && !e.repeat) useHint();
   });
 
   window.addEventListener('keyup', (e) => {
