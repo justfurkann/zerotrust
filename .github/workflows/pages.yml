@@ -30,6 +30,10 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html css js CNAME _site/
+          # Önbellek kırıcı: her yayında dosya adlarına sürüm eklenir, tarayıcı eski kodu kullanamaz
+          v="${GITHUB_SHA::8}"
+          sed -i -E "s#(src=\"js/[a-z0-9]+\.js)\"#\1?v=$v\"#g; s#(href=\"css/style\.css)\"#\1?v=$v\"#g" _site/index.html
+          grep -c "?v=$v" _site/index.html
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
