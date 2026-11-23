@@ -16,13 +16,14 @@
 <body>
   <main>
     <p><b>Zero Trust</b> taşındı / moved.</p>
-    <p>İlerlemen de seninle geliyor… / Bringing your progress along…</p>
+    <p id="msg">İlerlemen de seninle geliyor… / Bringing your progress along…</p>
     <p><a id="go" href="https://zerotrust.studymode.fun/">zerotrust.studymode.fun</a></p>
   </main>
   <script>
     // Bu adresteki kaydı okuyup yeni adrese taşır (yeni site #import= ile alır ve kendi kaydıyla birleştirir)
     (function () {
       var target = 'https://zerotrust.studymode.fun/';
+      var found = false;
       try {
         var k = 'zt.save.v4', s = localStorage.getItem(k);
         if (!s) { k = 'zt.save.v3'; s = localStorage.getItem(k); }
@@ -30,10 +31,15 @@
           var json = JSON.stringify({ k: k, s: s });
           var b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
           target += '#import=' + b64;
+          found = true;
         }
       } catch (e) {}
       document.getElementById('go').href = target;
-      location.replace(target);
+      if (found) { location.replace(target); return; }
+      // Kayıt yoksa sessizce gönderme: ne olduğunu göster
+      document.getElementById('msg').innerHTML =
+        'Bu tarayıcıda bu adreste kayıt bulunamadı. Oyunu başka bir tarayıcıda ya da gizli sekmede oynamış olabilirsin.<br>' +
+        'No save found in this browser for this address.';
     })();
   </script>
 </body>

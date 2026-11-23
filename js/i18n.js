@@ -130,6 +130,10 @@ window.ZT = window.ZT || {};
       'controls.short': 'A D / ← → hareket · W / Space zıpla · R yeniden · Esc duraklat',
 
       'back': 'Geri',
+      'map.stars': 'Yıldız',
+      'map.starRule': '★ geç · ★★ en fazla 3 ölümle · ★★★ hiç ölmeden.',
+      'import.done': 'Eski adresteki kaydın geldi: {n} bölüm. Seni unutmadım. Unutamam.',
+      'import.empty': 'Eski adresten geldin ama yanında kayıt yoktu. Baştan, o zaman.',
       'map.top': 'Nokta yukarıda bir yerde',
       'map.best': 'En iyi süre',
       'map.deaths': 'Ölüm',
@@ -637,6 +641,10 @@ window.ZT = window.ZT || {};
       'controls.short': 'A D / ← → move · W / Space jump · R restart · Esc pause',
 
       'back': 'Back',
+      'map.stars': 'Stars',
+      'map.starRule': '★ clear · ★★ with 3 deaths or fewer · ★★★ without dying.',
+      'import.done': 'Your save from the old address arrived: {n} levels. I didn\'t forget you. I can\'t.',
+      'import.empty': 'You came from the old address, but without a save. From the start, then.',
       'map.top': 'Dot is somewhere up there',
       'map.best': 'Best time',
       'map.deaths': 'Deaths',

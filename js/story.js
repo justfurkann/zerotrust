@@ -743,6 +743,7 @@ window.ZT = window.ZT || {};
     greet.lines = list.map((s) => s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m)));
     // Geri dönen oyuncuya ölüm sayısına göre özel bir söz
     if (!info.first && info.deaths >= 100) greet.lines.unshift(t('zero.greetMany', vars));
+    if (info.lead) greet.lines.unshift(info.lead);   // tek seferlik haber (ör. kayıt taşındı)
     greet.i = 0;
     greet.active = true;
     startGreetLine();

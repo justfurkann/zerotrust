@@ -91,6 +91,7 @@
       best: Array(N).fill(null), ldeaths: Array(N).fill(0),
       // İpucu bir kaynak: sayılı, oyun içinde kazanılır. hintStage: bölüm anahtarı → açılan kademe (1 dürtme, 2 tam)
       hints: HINT_START, hintStage: {}, perfect: {}, earned: {},
+      runBest: {},                  // bölüm anahtarı → geçilen en iyi denemedeki ölüm sayısı (yıldızlar için)
       keys: ZT.LEVEL_KEYS.slice()   // dizilerin hangi bölüme ait olduğu: sıra değişse de ilerleme kaymasın
     };
   }
@@ -132,7 +133,7 @@
     parsed.keys = ZT.LEVEL_KEYS.slice();
     const s = Object.assign(defaults(), parsed);
     if (!Array.isArray(s.seenCh)) s.seenCh = [];
-    for (const k of ['hintStage', 'perfect', 'earned']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
+    for (const k of ['hintStage', 'perfect', 'earned', 'runBest']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
     s.hints = Math.max(0, Math.min(HINT_MAX, Number.isFinite(s.hints) ? s.hints | 0 : HINT_START));
     s.deaths = Math.max(0, s.deaths | 0);
     s.cleared = fit(s.cleared, false).map(Boolean);
@@ -157,6 +158,8 @@
     m.seenCh = Array.from(new Set([...a.seenCh, ...b.seenCh]));
     m.hints = Math.max(a.hints, b.hints);
     for (const k of ['perfect', 'earned']) m[k] = Object.assign({}, b[k], a[k]);
+    m.runBest = Object.assign({}, b.runBest);
+    for (const k in a.runBest) m.runBest[k] = k in m.runBest ? Math.min(a.runBest[k], m.runBest[k]) : a.runBest[k];
     m.hintStage = Object.assign({}, b.hintStage);
     for (const k in a.hintStage) m.hintStage[k] = Math.max(a.hintStage[k] || 0, m.hintStage[k] || 0);
     for (const k of ['muted', 'music', 'radar']) m[k] = a[k];
@@ -189,7 +192,7 @@
     } catch (e) { local = null; }
     inc = readImport();
     if (inc) {
-      imported = true;
+      imported = inc.cleared.filter(Boolean).length || -1;
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
       return local ? mergeSaves(local, inc) : inc;
     }
@@ -200,6 +203,13 @@
   }
   let save = loadSave();
   if (imported) persist();
+  // Eski adresten kayıt geldiyse Sıfır menüde bir kez söyler
+  function importNote() {
+    if (!imported) return '';
+    const n = imported;
+    imported = false;
+    return n > 0 ? t('import.done', { n }) : t('import.empty');
+  }
   ZT.audio.muted = save.muted;
   ZT.audio.setMusic(save.music);
 
@@ -688,6 +698,7 @@
     // İpucu kazanma: bir bölümü ilk kez hiç ölmeden geçmek +1, bir yeri bitirmek +1
     const key = ZT.LEVEL_KEYS[levelIdx];
     let gained = 0;
+    if (!(key in save.runBest) || levelDeaths < save.runBest[key]) save.runBest[key] = levelDeaths;
     if (levelDeaths === 0) { save.perfect[key] = true; gained += giveHint('perfect:' + key, 1); }
     const chNow = ZT.CHAPTERS[ZT.chapterOf(levelIdx)];
     let chDone = true;
@@ -697,7 +708,8 @@
     const gainNote = gained ? t('hint.gain', { n: gained }) : '';
     if (levelIdx < N - 1) {
       // Kafesten (ihanetten) sonra "Nokta yakın" demek sahneyi öldürür: orada sessiz kal
-      if (ZT.LEVEL_KEYS[levelIdx] !== 'f1') toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', gainNote ? timeNote + ' · ' + gainNote : timeNote);
+      const starNote = starText(starsOf(levelIdx));
+      if (ZT.LEVEL_KEYS[levelIdx] !== 'f1') toast(t('ev.levelDone', { n: levelIdx + 1 }), 'win', [starNote, timeNote, gainNote].filter(Boolean).join(' · '));
       transT = TRANS_T;
       loadLevel(levelIdx + 1, { fresh: true });
       maybeInterlude(levelIdx);
@@ -2859,7 +2871,8 @@
   function maybeInterlude(idx) {
     if (testing) return;
     const ch = ZT.CHAPTERS[ZT.chapterOf(idx)];
-    if (idx !== ch.from || save.seenCh.includes(ch.key)) return;
+    // Bölümler açık olduğu için bir yere hangi bölümden girilirse girilsin, ilk girişte Sıfır konuşur
+    if (save.seenCh.includes(ch.key)) return;
     const lines = ZT.story.chapterLines(ch.key);
     if (!lines || !lines.length) return;
     save.seenCh.push(ch.key);
@@ -2877,10 +2890,22 @@
     });
   }
 
+  // Bütün bölümler açık; "devam et" sıradaki geçilmemiş bölüme gider
   function firstUnfinished() {
-    for (let i = 0; i <= save.unlocked; i++) if (!save.cleared[i]) return i;
-    return save.unlocked;
+    for (let i = 0; i < N; i++) if (!save.cleared[i]) return i;
+    return N - 1;
   }
+
+  // Yıldızlar: ★ geçtin · ★★ en fazla 3 ölümle geçtin · ★★★ hiç ölmeden geçtin
+  function starsOf(i) {
+    if (!save.cleared[i]) return 0;
+    const key = ZT.LEVEL_KEYS[i];
+    if (save.perfect[key] || save.runBest[key] === 0) return 3;
+    const d = key in save.runBest ? save.runBest[key] : save.ldeaths[i] || 0;
+    return d <= 3 ? 2 : 1;
+  }
+  function starText(n) { return '★★★'.slice(0, n) + '☆☆☆'.slice(0, 3 - n); }
+  function totalStars() { let n = 0; for (let i = 0; i < N; i++) n += starsOf(i); return n; }
 
   function refreshMenu() {
     const started = save.unlocked > 0 || save.deaths > 0;
@@ -2892,7 +2917,7 @@
     $('menuTotal').textContent = '/' + N;
     $('menuMeter').style.width = (done / N) * 100 + '%';
     $('menuTime').textContent = done ? fmtTime(totalBest()) : '–';
-    ZT.story.setGreeting({ first: !started, deaths: save.deaths, done, total: N });
+    ZT.story.setGreeting({ first: !started, deaths: save.deaths, done, total: N, lead: importNote() });
     document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('active', b.dataset.lang === ZT.getLang()));
     if (levelIdx !== 0 || player.dead || world.t === 0 || levelDeaths) {
       demoRun = 0;
@@ -3090,7 +3115,7 @@
     const rgbOf = (ci) => ZT.CHAPTERS[ci].tint.join(',');
     // Bantlar, simgeler, tabelalar
     places.forEach((p, ci) => {
-      const locked = save.unlocked < p.ch.from;
+      const locked = false;
       const band = document.createElement('div');
       band.className = 'band' + (locked ? ' locked' : '');
       band.style.cssText = '--rgb:' + rgbOf(ci) + ';top:' + at(p.top) + ';height:' + at(p.bottom - p.top);
@@ -3120,7 +3145,7 @@
     const top = document.createElement('div');
     top.className = 'map-top';
     top.style.top = at(5);
-    top.textContent = t('map.top');
+    top.textContent = t('map.top') + ' · ★ ' + totalStars() + '/' + N * 3;
     map.appendChild(top);
 
     // Yol: Catmull-Rom eğrisi, her parça kendi rengiyle (geçilmiş: yerin rengi, geçilmemiş: kesik gri)
@@ -3151,7 +3176,7 @@
         path.setAttribute('stroke', 'rgb(' + rgbOf(ZT.chapterOf(i + 1)) + ')');
         path.setAttribute('stroke-width', '0.9');
       } else {
-        path.setAttribute('stroke', i < save.unlocked ? 'rgba(236,232,223,0.45)' : 'rgba(236,232,223,0.14)');
+        path.setAttribute('stroke', 'rgba(236,232,223,0.4)');
         path.setAttribute('stroke-dasharray', '0.1 2.4');
         path.setAttribute('stroke-width', '1');
       }
@@ -3162,7 +3187,7 @@
     // Düğümler
     mapNodes = [];
     for (let i = 0; i < N_; i++) {
-      const unlocked = i <= save.unlocked;
+      const unlocked = true;
       const cleared = save.cleared[i];
       const isNext = unlocked && i === next && !cleared;
       const ci = ZT.chapterOf(i);
@@ -3174,15 +3199,15 @@
       b.innerHTML = '<span class="n"></span>';
       b.querySelector('.n').textContent = String(i + 1);
       b.setAttribute('aria-label', t('levels.level') + ' ' + (i + 1) + (unlocked ? ' · ' + t(ZT.LEVEL_KEYS[i] + '.title') : ' · ' + t('levels.locked')));
-      if (cleared) {
-        const badge = document.createElement('span');
-        const d = save.ldeaths[i] || 0;
-        const perfect = save.perfect[ZT.LEVEL_KEYS[i]] || d === 0;
-        badge.className = 'badge' + (perfect ? ' perfect' : '');
-        if (perfect) badge.textContent = '★ ' + fmtTime(save.best[i]);
-        else { badge.textContent = fmtTime(save.best[i]) + ' '; const s = document.createElement('span'); s.className = 'danger'; s.textContent = '✕' + d; badge.appendChild(s); }
-        b.appendChild(badge);
+      const st = starsOf(i);
+      const stars = document.createElement('span');
+      stars.className = 'stars';
+      for (let k = 0; k < 3; k++) {
+        const e = document.createElement('i');
+        if (k < st) e.className = 'on';
+        stars.appendChild(e);
       }
+      b.appendChild(stars);
       b.addEventListener('mouseenter', () => showMapCard(i));
       b.addEventListener('focus', () => { mapFocus = i; showMapCard(i); });
       b.addEventListener('click', () => { if (unlocked) { ZT.audio.play('ui'); startLevel(i); } else ZT.audio.play('error'); });
@@ -3226,7 +3251,7 @@
   }
 
   function showMapCard(i) {
-    const unlocked = i <= save.unlocked;
+    const unlocked = true;
     const cleared = save.cleared[i];
     const ci = ZT.chapterOf(i);
     const ch = ZT.CHAPTERS[ci];
@@ -3258,6 +3283,7 @@
       if (cls) s.querySelector('b').className = cls;
       st.appendChild(s);
     };
+    stat(t('map.stars'), starText(starsOf(i)), 'gold');
     if (cleared) {
       stat(t('map.best'), fmtTime(save.best[i]));
       stat(t('map.deaths'), String(save.ldeaths[i] || 0), save.ldeaths[i] ? 'danger' : '');
@@ -3265,13 +3291,13 @@
       stat(t('map.state'), t('levels.none'));
       if (save.ldeaths[i]) stat(t('map.deaths'), String(save.ldeaths[i]), 'danger');
     }
-    $('mcDesc').textContent = unlocked ? t(ch.key + '.desc') : t('map.lockedDesc');
+    $('mcDesc').textContent = t(ch.key + '.desc') + ' ' + t('map.starRule');
     $('mcPlay').textContent = unlocked ? t('map.play') : '';
   }
 
   // Haritada bir düğüme odaklan ve kaydırarak ortala
   function focusMapNode(i, smooth) {
-    i = Math.max(0, Math.min(Math.min(save.unlocked, N - 1), i));
+    i = Math.max(0, Math.min(N - 1, i));
     const b = mapNodes[i];
     if (!b) return;
     mapFocus = i;
@@ -3292,7 +3318,6 @@
     const ci = ZT.chapterOf(mapFocus) + dir;
     if (ci < 0 || ci >= ZT.CHAPTERS.length) return;
     const ch = ZT.CHAPTERS[ci];
-    if (ch.from > save.unlocked) return;
     focusMapNode(ch.from, true);
   }
 
